@@ -1,11 +1,36 @@
-[![Obsolete project](https://jb.gg/badges/obsolete-plastic.svg)](https://github.com/JetBrains#jetbrains-on-github)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-# [Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform) mobile application
+# AI SportTask 应用需求介绍
 
-This template has been archived.
+## 概述
+AI SportTask 是一款个人运动任务管理与打卡应用，帮助用户以动作为单位组织训练，制定训练计划，记录每日打卡并统计训练数据。
 
-* To create Compose Multiplatform projects, use the [Kotlin Multiplatform wizard](https://kmp.jetbrains.com/).
-  Make sure to enable the **Share UI** option.
-* To learn how to build Compose Multiplatform projects, see the [Get started with Compose Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-multiplatform-getting-started.html) tutorial.
+## 目标与价值
+- 降低制定训练计划的门槛，提升执行力和连贯性
+- 以“动作分组 → 动作 → 训练序列”的结构化方式组织训练
+- 通过打卡与统计强化反馈，促进习惯养成
 
-  If you have an idea on how to improve the tutorial, create a pull request to the [documentation repository](https://github.com/JetBrains/kotlin-multiplatform-dev-docs).
+## 核心功能
+- 动作分组管理：创建、编辑、删除分组；分组内动作排序
+- 动作管理：名称、步骤说明、默认时长、休息时长、排序；归属分组
+- 训练执行：按照排序生成训练序列；计时与休息提示；支持跳过/重复
+- 打卡记录：按日记录训练完成情况，关联分组/动作、耗时、完成状态
+- 数据统计：按日/周/月统计次数与时长，查看趋势与连续打卡天数
+
+## 平台与技术栈
+- 平台：Android、iOS（Kotlin Multiplatform）
+- UI：Compose Multiplatform
+- 数据：SQLDelight（本地持久化）
+
+## 主要使用流程
+- 创建分组与动作，设置默认时长与休息时长
+- 根据分组内 `order_index` 生成训练序列并执行
+- 完成当日训练后进行打卡，记录耗时与完成状态
+- 在统计页查看周期汇总与连续打卡等指标
+
+## 非功能需求
+- 离线可用，本地优先；启动快速、交互流畅
+- 数据安全与隐私，本地数据不外发；后续可选云同步
+
+## 迭代方向（建议）
+- 训练提醒与日程通知、番茄式节奏支持
+- 动作模板库与社区分享、计划导入导出
+- 云备份与多端同步、个性化统计报表
