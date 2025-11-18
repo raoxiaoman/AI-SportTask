@@ -1,0 +1,27 @@
+-- SportTask SQLDelight schema
+
+CREATE TABLE action_group (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  created_at TEXT
+);
+
+CREATE TABLE action (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id INTEGER NOT NULL REFERENCES action_group(id),
+  name TEXT NOT NULL,
+  steps_text TEXT,
+  default_time INTEGER NOT NULL,
+  rest_time INTEGER NOT NULL,
+  order_index INTEGER NOT NULL,
+  created_at TEXT
+);
+
+CREATE TABLE checkin (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,
+  group_id INTEGER,
+  action_id INTEGER,
+  duration INTEGER,
+  is_completed INTEGER
+);
