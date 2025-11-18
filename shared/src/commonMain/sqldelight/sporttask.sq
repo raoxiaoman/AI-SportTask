@@ -25,3 +25,51 @@ CREATE TABLE checkin (
   duration INTEGER,
   is_completed INTEGER
 );
+
+-- Action Group queries
+getAllActionGroups:
+SELECT id, name, created_at FROM action_group ORDER BY id;
+
+getActionGroupById:
+SELECT id, name, created_at FROM action_group WHERE id = ?;
+
+insertActionGroup:
+INSERT INTO action_group(name, created_at) VALUES (?, ?);
+
+updateActionGroupName:
+UPDATE action_group SET name = ? WHERE id = ?;
+
+deleteActionGroupById:
+DELETE FROM action_group WHERE id = ?;
+
+-- Action queries
+getActionsByGroup:
+SELECT id, group_id, name, steps_text, default_time, rest_time, order_index, created_at FROM action WHERE group_id = ? ORDER BY order_index;
+
+getActionById:
+SELECT id, group_id, name, steps_text, default_time, rest_time, order_index, created_at FROM action WHERE id = ?;
+
+insertAction:
+INSERT INTO action(group_id, name, steps_text, default_time, rest_time, order_index, created_at) VALUES (?, ?, ?, ?, ?, ?, ?);
+
+updateAction:
+UPDATE action SET group_id = ?, name = ?, steps_text = ?, default_time = ?, rest_time = ?, order_index = ?, created_at = ? WHERE id = ?;
+
+updateActionOrder:
+UPDATE action SET order_index = ? WHERE id = ?;
+
+deleteActionById:
+DELETE FROM action WHERE id = ?;
+
+countActionsInGroup:
+SELECT COUNT(*) AS c FROM action WHERE group_id = ?;
+
+-- Checkin queries
+insertCheckin:
+INSERT INTO checkin(date, group_id, action_id, duration, is_completed) VALUES (?, ?, ?, ?, ?);
+
+getCheckinsByDateRange:
+SELECT id, date, group_id, action_id, duration, is_completed FROM checkin WHERE date BETWEEN ? AND ? ORDER BY date;
+
+getDailySummary:
+SELECT date, COUNT(*) AS count, COALESCE(SUM(duration),0) AS total_duration FROM checkin WHERE is_completed = 1 AND date BETWEEN ? AND ? GROUP BY date ORDER BY date;
