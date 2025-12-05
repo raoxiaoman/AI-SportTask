@@ -1,8 +1,8 @@
 import androidx.compose.material.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
+import pages.*
 
 @Composable
 fun App() {
@@ -41,42 +41,6 @@ fun App() {
                 }
             }
         }
-    }
-}
-
-// 训练屏幕
-@Composable
-fun TrainingScreen() {
-    CenterText("训练界面")
-}
-
-// 分组屏幕
-@Composable
-fun GroupScreen() {
-    CenterText("分组界面")
-}
-
-// 打卡屏幕
-@Composable
-fun CheckinScreen() {
-    CenterText("打卡界面")
-}
-
-// 统计屏幕
-@Composable
-fun StatisticsScreen() {
-    CenterText("统计界面")
-}
-
-// 辅助组件：居中显示文本
-@Composable
-fun CenterText(text: String) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text)
     }
 }
 
