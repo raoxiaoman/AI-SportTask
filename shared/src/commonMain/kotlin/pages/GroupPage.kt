@@ -38,12 +38,24 @@ fun GroupScreen() {
 // 分组列表页面
 @Composable
 fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
+    // 控制是否显示添加分组对话框
+    var showAddDialog by remember { mutableStateOf(false) }
+    // 输入的分组名称
+    var groupName by remember { mutableStateOf("") }
+
+    // 模拟分组数据
+    val groups = mutableStateListOf(
+        GroupItem("上肢力量", 5),
+        GroupItem("核心训练", 4),
+        GroupItem("有氧耐力", 6)
+    )
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("分组管理") })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* 打开添加分组对话框 */ }) {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
                 Text("+")
             }
         }
@@ -52,13 +64,6 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
         Column(modifier = Modifier
             .padding(innerPadding)
             .padding(8.dp)) {
-            // 模拟分组数据
-            val groups = listOf(
-                GroupItem("上肢力量", 5),
-                GroupItem("核心训练", 4),
-                GroupItem("有氧耐力", 6)
-            )
-
             // 列表
             LazyColumn {
                 items(groups) { group ->
@@ -68,6 +73,52 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                     )
                 }
             }
+        }
+
+        // 添加分组对话框
+        if (showAddDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddDialog = false },
+                title = { Text("创建新分组") },
+                text = {
+                    Column {
+                        Text("请输入分组名称：")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = groupName,
+                            onValueChange = { groupName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("分组名称") }
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            // 创建分组
+                            if (groupName.isNotBlank()) {
+                                // 添加到模拟数据
+                                val newGroup = GroupItem(groupName, 0)
+                                groups.add(newGroup)
+
+                                // 重置表单并关闭对话框
+                                groupName = ""
+                                showAddDialog = false
+                            }
+                        }
+                    ) {
+                        Text("创建")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = {
+                        groupName = ""
+                        showAddDialog = false
+                    }) {
+                        Text("取消")
+                    }
+                }
+            )
         }
     }
 }
