@@ -41,6 +41,14 @@ class SportTaskRepository(private val db: SportTaskDatabase = DatabaseProvider.d
         q.getActionsByGroup(groupId).executeAsList()
     }
 
+    suspend fun getAllActions() = withContext(Dispatchers.Default) {
+        // 获取所有分组的所有动作
+        val groups = q.getAllActionGroups().executeAsList()
+        groups.flatMap { group ->
+            q.getActionsByGroup(group.id).executeAsList()
+        }
+    }
+
     suspend fun getAction(id: Long) = withContext(Dispatchers.Default) {
         q.getActionById(id).executeAsOneOrNull()
     }

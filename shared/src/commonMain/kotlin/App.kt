@@ -7,7 +7,7 @@ import pages.*
 @Composable
 fun App() {
     MaterialTheme {
-        val navTitles = listOf("训练", "分组", "打卡", "统计")
+        val navTitles = listOf("训练", "分组", "打卡", "统计", "设置")
 
         var selectedIndex by remember { mutableStateOf(0) }
 
@@ -21,6 +21,7 @@ fun App() {
                                 1 -> "📁"
                                 2 -> "✅"
                                 3 -> "📊"
+                                4 -> "⚙️"
                                 else -> "?"
                             }) },
                             label = { Text(title) },
@@ -37,6 +38,7 @@ fun App() {
                     1 -> GroupScreen()
                     2 -> CheckinScreen()
                     3 -> StatisticsScreen()
+                    4 -> SettingsScreen()
                     else -> TrainingScreen()
                 }
             }
