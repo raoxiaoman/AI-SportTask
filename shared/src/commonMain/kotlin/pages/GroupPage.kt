@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // 分组屏幕
 @Composable
@@ -252,12 +254,31 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
 // 分组详情页面
 @Composable
 fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
-    // 模拟动作数据
-    val actions = listOf(
-        ActionItem("俯卧撑", "1. 双手与肩同宽\n2. 身体保持直线", 45, 15, 1),
-        ActionItem("哑铃划船", "1. 单膝跪地\n2. 背部保持平直", 60, 20, 2),
-        ActionItem("平板支撑", "1. 肘部支撑地面\n2. 身体保持一条直线", 60, 30, 3)
-    )
+    val repository = SportTaskRepository()
+    val scope = rememberCoroutineScope()
+
+    // 动作列表状态
+    var actions by remember { mutableStateOf<List<ActionItem>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    // 从数据库加载动作列表
+    LaunchedEffect(group.id) {
+        isLoading = true
+        val dbActions = withContext(Dispatchers.Default) {
+            repository.getActions(group.id)
+        }
+        actions = dbActions.map { action ->
+            ActionItem(
+                id = action.id,
+                name = action.name,
+                stepsText = action.steps_text ?: "",
+                defaultTime = action.default_time.toInt(),
+                restTime = action.rest_time.toInt(),
+                orderIndex = action.order_index.toInt()
+            )
+        }
+        isLoading = false
+    }
 
     Scaffold(
         topBar = {
@@ -311,9 +332,26 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
                 modifier = Modifier.padding(16.dp)
             )
 
-            LazyColumn {
-                items(actions) { action ->
-                    ActionCard(action = action)
+            // 加载状态
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (actions.isEmpty()) {
+                Text(
+                    text = "暂无动作，点击 + 添加",
+                    style = MaterialTheme.typography.body2,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(16.dp)
+                )
+            } else {
+                LazyColumn {
+                    items(actions) { action ->
+                        ActionCard(action = action)
+                    }
                 }
             }
         }
@@ -325,6 +363,7 @@ data class GroupItem(val id: Long, val name: String, val actionCount: Int)
 
 // 动作数据类
 data class ActionItem(
+    val id: Long = 0,
     val name: String,
     val stepsText: String,
     val defaultTime: Int,
