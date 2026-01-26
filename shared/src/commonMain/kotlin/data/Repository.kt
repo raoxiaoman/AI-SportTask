@@ -91,4 +91,8 @@ class SportTaskRepository(private val db: SportTaskDatabase = DatabaseProvider.d
     suspend fun getDailySummary(startDate: String, endDate: String) = withContext(Dispatchers.Default) {
         q.getDailySummary(startDate, endDate).executeAsList()
     }
+
+    suspend fun getCheckinsByDateRange(startDate: String, endDate: String) = withContext(Dispatchers.Default) {
+        q.getCheckinsByDateRange(startDate, endDate).executeAsList()
+    }
 }
