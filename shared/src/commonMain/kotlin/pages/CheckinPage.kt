@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
+import data.CheckinItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -74,10 +75,3 @@ fun CheckinScreen() {
         }
     }
 }
-
-data class CheckinItem(
-    val id: Long,
-    val date: String,
-    val duration: Int,
-    val isCompleted: Boolean
-)

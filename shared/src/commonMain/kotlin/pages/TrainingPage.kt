@@ -15,6 +15,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import data.SportTaskRepository
+import data.GroupItem
+import data.ActionItem
+import data.TrainingResult
+import data.formatTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -716,18 +720,4 @@ fun CompletedContent(
             Text("暂不打卡")
         }
     }
-}
-
-// 训练结果数据类
-data class TrainingResult(
-    val groupId: Long,
-    val duration: Int,
-    val completed: Boolean
-)
-
-// 格式化时间
-private fun formatTime(seconds: Int): String {
-    val mins = seconds / 60
-    val secs = seconds % 60
-    return "%d:%02d".format(mins, secs)
 }

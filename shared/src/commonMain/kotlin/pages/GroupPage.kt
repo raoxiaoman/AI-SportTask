@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
+import data.GroupItem
+import data.ActionItem
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -493,19 +495,6 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
         }
     }
 }
-
-// 分组数据类
-data class GroupItem(val id: Long, val name: String, val actionCount: Int)
-
-// 动作数据类
-data class ActionItem(
-    val id: Long = 0,
-    val name: String,
-    val stepsText: String,
-    val defaultTime: Int,
-    val restTime: Int,
-    val orderIndex: Int
-)
 
 // 分组卡片组件
 @Composable
