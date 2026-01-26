@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import data.SportTaskRepository
+import kotlinx.coroutines.launch
 
 // 分组屏幕
 @Composable
@@ -26,8 +28,9 @@ fun GroupScreen() {
         })
     } else {
         // 分组详情页面
+        val group = selectedGroup!!
         GroupDetailScreen(
-            group = selectedGroup!!,
+            group = group,
             onBackClick = {
                 selectedGroup = null
             }
@@ -43,12 +46,29 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
     // 输入的分组名称
     var groupName by remember { mutableStateOf("") }
 
-    // 模拟分组数据
-    val groups = mutableStateListOf(
-        GroupItem("上肢力量", 5),
-        GroupItem("核心训练", 4),
-        GroupItem("有氧耐力", 6)
-    )
+    // 控制是否显示编辑分组对话框
+    var showEditDialog by remember { mutableStateOf(false) }
+    // 当前正在编辑的分组
+    var currentEditingGroup by remember { mutableStateOf<GroupItem?>(null) }
+    // 编辑的分组名称
+    var editGroupName by remember { mutableStateOf("") }
+
+    // 控制是否显示删除分组对话框
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    // 当前正在删除的分组
+    var currentDeletingGroup by remember { mutableStateOf<GroupItem?>(null) }
+
+    // 从数据库获取分组
+    val repository = SportTaskRepository()
+    val scope = rememberCoroutineScope()
+
+    // 分组列表状态
+    var groups by remember { mutableStateOf<List<GroupItem>>(emptyList()) }
+
+    // 初始加载分组
+    LaunchedEffect(true) {
+        loadGroups(repository) { groups = it }
+    }
 
     Scaffold(
         topBar = {
@@ -69,10 +89,111 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                 items(groups) { group ->
                     GroupCard(
                         group = group,
-                        onClick = { onGroupClick(group) }
+                        onClick = { onGroupClick(group) },
+                        onEditClick = {
+                            currentEditingGroup = group
+                            editGroupName = group.name
+                            showEditDialog = true
+                        },
+                        onDeleteClick = {
+                            currentDeletingGroup = group
+                            showDeleteDialog = true
+                        }
                     )
                 }
             }
+        }
+
+        // 删除分组对话框
+        if (showDeleteDialog && currentDeletingGroup != null) {
+            val deletingGroup = currentDeletingGroup!!
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("删除分组") },
+                text = {
+                    Text("确定要删除分组 \"${deletingGroup.name}\" 吗？")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val groupToDelete = currentDeletingGroup ?: return@launch
+                                // 删除数据库中的分组
+                                repository.deleteGroup(groupToDelete.id)
+
+                                // 重新加载分组列表
+                                loadGroups(repository) { groups = it }
+
+                                // 重置状态并关闭对话框
+                                currentDeletingGroup = null
+                                showDeleteDialog = false
+                            }
+                        }
+                    ) {
+                        Text("删除")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = {
+                        currentDeletingGroup = null
+                        showDeleteDialog = false
+                    }) {
+                        Text("取消")
+                    }
+                }
+            )
+        }
+
+        // 编辑分组对话框
+        if (showEditDialog && currentEditingGroup != null) {
+            AlertDialog(
+                onDismissRequest = { showEditDialog = false },
+                title = { Text("编辑分组") },
+                text = {
+                    Column {
+                        Text("请输入新的分组名称：")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = editGroupName,
+                            onValueChange = { editGroupName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("分组名称") }
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (editGroupName.isNotBlank()) {
+                                scope.launch {
+                                    val groupToEdit = currentEditingGroup ?: return@launch
+                                    // 更新数据库
+                                    repository.updateGroupName(groupToEdit.id, editGroupName)
+
+                                    // 重新加载分组列表
+                                    loadGroups(repository) { groups = it }
+                                }
+
+                                // 重置表单并关闭对话框
+                                editGroupName = ""
+                                currentEditingGroup = null
+                                showEditDialog = false
+                            }
+                        }
+                    ) {
+                        Text("保存")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = {
+                        editGroupName = ""
+                        currentEditingGroup = null
+                        showEditDialog = false
+                    }) {
+                        Text("取消")
+                    }
+                }
+            )
         }
 
         // 添加分组对话框
@@ -97,9 +218,14 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                         onClick = {
                             // 创建分组
                             if (groupName.isNotBlank()) {
-                                // 添加到模拟数据
-                                val newGroup = GroupItem(groupName, 0)
-                                groups.add(newGroup)
+                                scope.launch {
+                                    // 添加到数据库
+                                    val now = java.time.LocalDate.now().toString()
+                                    repository.addGroup(groupName, now)
+
+                                    // 重新加载分组列表
+                                    loadGroups(repository) { groups = it }
+                                }
 
                                 // 重置表单并关闭对话框
                                 groupName = ""
@@ -195,7 +321,7 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
 }
 
 // 分组数据类
-data class GroupItem(val name: String, val actionCount: Int)
+data class GroupItem(val id: Long, val name: String, val actionCount: Int)
 
 // 动作数据类
 data class ActionItem(
@@ -208,12 +334,11 @@ data class ActionItem(
 
 // 分组卡片组件
 @Composable
-fun GroupCard(group: GroupItem, onClick: () -> Unit) {
+fun GroupCard(group: GroupItem, onClick: () -> Unit, onEditClick: (GroupItem) -> Unit, onDeleteClick: (GroupItem) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onClick),
+            .padding(vertical = 4.dp),
         elevation = 4.dp
     ) {
         Row(
@@ -223,12 +348,28 @@ fun GroupCard(group: GroupItem, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier
+                .weight(1f)
+                .clickable(onClick = onClick)) {
                 Text(text = group.name, style = MaterialTheme.typography.h6)
                 Text(
                     text = "${group.actionCount} 个动作",
                     style = MaterialTheme.typography.body2,
                     color = Color.Gray
+                )
+            }
+            IconButton(onClick = { onEditClick(group) }) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "编辑",
+                    tint = Color.Gray
+                )
+            }
+            IconButton(onClick = { onDeleteClick(group) }) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "删除",
+                    tint = Color.Gray
                 )
             }
             Icon(
@@ -272,4 +413,19 @@ fun ActionCard(action: ActionItem) {
             }
         }
     }
+}
+
+// 加载分组列表的辅助函数
+private suspend fun loadGroups(
+    repository: SportTaskRepository,
+    onResult: (List<GroupItem>) -> Unit
+) {
+    val actionGroups = repository.getGroups()
+    onResult(actionGroups.map { group ->
+        GroupItem(
+            id = group.id,
+            name = group.name,
+            actionCount = repository.countActions(group.id).toInt()
+        )
+    })
 }
