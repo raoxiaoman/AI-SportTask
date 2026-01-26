@@ -468,3 +468,183 @@ private suspend fun loadGroups(
         )
     })
 }
+
+// 动作编辑屏幕
+@Composable
+fun ActionEditScreen(
+    groupId: Long,
+    action: ActionItem? = null,
+    onBackClick: () -> Unit,
+    onSaveClick: (ActionItem) -> Unit
+) {
+    val isEditing = action != null
+
+    var name by remember { mutableStateOf(action?.name ?: "") }
+    var stepsText by remember { mutableStateOf(action?.stepsText ?: "") }
+    var defaultTime by remember { mutableStateOf(action?.defaultTime?.toString() ?: "30") }
+    var restTime by remember { mutableStateOf(action?.restTime?.toString() ?: "10") }
+    var orderIndex by remember { mutableStateOf(action?.orderIndex?.toString() ?: "1") }
+    var nameError by remember { mutableStateOf(false) }
+    var timeError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    val repository = SportTaskRepository()
+
+    // 如果是编辑模式，获取下一个排序索引
+    LaunchedEffect(groupId) {
+        if (!isEditing) {
+            val nextIndex = withContext(Dispatchers.Default) {
+                repository.getNextOrderIndex(groupId)
+            }
+            orderIndex = nextIndex.toString()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(if (isEditing) "编辑动作" else "添加动作") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 动作名称
+            OutlinedTextField(
+                value = name,
+                onValueChange = {
+                    name = it
+                    nameError = false
+                },
+                label = { Text("动作名称 *") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = nameError
+            )
+
+            if (nameError) {
+                Text(
+                    text = "请输入动作名称",
+                    color = MaterialTheme.colors.error,
+                    style = MaterialTheme.typography.caption
+                )
+            }
+
+            // 步骤说明
+            OutlinedTextField(
+                value = stepsText,
+                onValueChange = { stepsText = it },
+                label = { Text("步骤说明") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                maxLines = 5
+            )
+
+            // 默认时长和休息时长
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = defaultTime,
+                    onValueChange = { newValue: String ->
+                        defaultTime = newValue.filter { ch: Char -> ch.isDigit() }
+                        timeError = false
+                    },
+                    label = { Text("默认时长(秒) *") },
+                    modifier = Modifier.weight(1f),
+                    isError = timeError
+                )
+
+                OutlinedTextField(
+                    value = restTime,
+                    onValueChange = { newValue: String ->
+                        restTime = newValue.filter { ch: Char -> ch.isDigit() }
+                        timeError = false
+                    },
+                    label = { Text("休息时长(秒) *") },
+                    modifier = Modifier.weight(1f),
+                    isError = timeError
+                )
+            }
+
+            // 排序索引
+            OutlinedTextField(
+                value = orderIndex,
+                onValueChange = { newValue: String ->
+                    orderIndex = newValue.filter { ch: Char -> ch.isDigit() }
+                    timeError = false
+                },
+                label = { Text("排序索引") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = timeError
+            )
+
+            if (timeError) {
+                Text(
+                    text = errorMessage.ifEmpty { "请输入有效数字" },
+                    color = MaterialTheme.colors.error,
+                    style = MaterialTheme.typography.caption
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 保存按钮
+            Button(
+                onClick = {
+                    // 验证
+                    nameError = name.isBlank()
+                    val defaultTimeLong = defaultTime.toLongOrNull()
+                    val restTimeLong = restTime.toLongOrNull()
+                    val orderIndexLong = orderIndex.toLongOrNull()
+
+                    when {
+                        name.isBlank() -> {
+                            errorMessage = "请输入动作名称"
+                        }
+                        defaultTimeLong == null || defaultTimeLong <= 0 -> {
+                            timeError = true
+                            errorMessage = "默认时长必须大于0"
+                        }
+                        restTimeLong == null || restTimeLong < 0 -> {
+                            timeError = true
+                            errorMessage = "休息时长必须大于等于0"
+                        }
+                        orderIndexLong == null || orderIndexLong <= 0 -> {
+                            timeError = true
+                            errorMessage = "排序索引必须大于0"
+                        }
+                        else -> {
+                            val newAction = ActionItem(
+                                id = action?.id ?: 0,
+                                name = name.trim(),
+                                stepsText = stepsText.trim(),
+                                defaultTime = defaultTimeLong.toInt(),
+                                restTime = restTimeLong.toInt(),
+                                orderIndex = orderIndexLong.toInt()
+                            )
+                            onSaveClick(newAction)
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("保存")
+            }
+        }
+    }
+}
