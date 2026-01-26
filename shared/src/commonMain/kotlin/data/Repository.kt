@@ -103,4 +103,92 @@ class SportTaskRepository(private val db: SportTaskDatabase = DatabaseProvider.d
     suspend fun getCheckinsByDateRange(startDate: String, endDate: String) = withContext(Dispatchers.Default) {
         q.getCheckinsByDateRange(startDate, endDate).executeAsList()
     }
+
+    suspend fun updateCheckin(id: Long, duration: Long, isCompleted: Long) = withContext(Dispatchers.Default) {
+        q.updateCheckin(duration, isCompleted, id)
+    }
+
+    suspend fun deleteCheckin(id: Long) = withContext(Dispatchers.Default) {
+        q.deleteCheckinById(id)
+    }
+
+    // Data management
+    suspend fun deleteAllCheckins() = withContext(Dispatchers.Default) {
+        q.deleteAllCheckins()
+    }
+
+    suspend fun deleteAllActions() = withContext(Dispatchers.Default) {
+        q.deleteAllActions()
+    }
+
+    suspend fun deleteAllActionGroups() = withContext(Dispatchers.Default) {
+        q.deleteAllActionGroups()
+    }
+
+    suspend fun clearAllData() = withContext(Dispatchers.Default) {
+        q.deleteAllCheckins()
+        q.deleteAllActions()
+        q.deleteAllActionGroups()
+    }
+
+    // Export data as JSON
+    suspend fun exportDataAsJson(): String = withContext(Dispatchers.Default) {
+        val groups = q.getAllActionGroups().executeAsList()
+        val actions = groups.flatMap { group ->
+            q.getActionsByGroup(group.id).executeAsList()
+        }
+        val checkins = q.getCheckinsByDateRange("1970-01-01", "2099-12-31").executeAsList()
+
+        buildString {
+            appendLine("{")
+            appendLine("  \"version\": 1,")
+            appendLine("  \"exportedAt\": \"${java.time.LocalDate.now()}\",")
+
+            // Export groups
+            appendLine("  \"groups\": [")
+            groups.forEachIndexed { index, group ->
+                append("    {")
+                append("\"id\": ${group.id}, ")
+                append("\"name\": \"${group.name}\", ")
+                append("\"createdAt\": \"${group.created_at ?: ""}\"")
+                append("}")
+                if (index < groups.size - 1) appendLine(",") else appendLine()
+            }
+            appendLine("  ],")
+
+            // Export actions
+            appendLine("  \"actions\": [")
+            actions.forEachIndexed { index, action ->
+                append("    {")
+                append("\"id\": ${action.id}, ")
+                append("\"groupId\": ${action.group_id}, ")
+                append("\"name\": \"${action.name}\", ")
+                append("\"stepsText\": \"${action.steps_text ?: ""}\", ")
+                append("\"defaultTime\": ${action.default_time}, ")
+                append("\"restTime\": ${action.rest_time}, ")
+                append("\"orderIndex\": ${action.order_index}, ")
+                append("\"createdAt\": \"${action.created_at ?: ""}\"")
+                append("}")
+                if (index < actions.size - 1) appendLine(",") else appendLine()
+            }
+            appendLine("  ],")
+
+            // Export checkins
+            appendLine("  \"checkins\": [")
+            checkins.forEachIndexed { index, checkin ->
+                append("    {")
+                append("\"id\": ${checkin.id}, ")
+                append("\"date\": \"${checkin.date}\", ")
+                append("\"groupId\": ${checkin.group_id ?: "null"}, ")
+                append("\"actionId\": ${checkin.action_id ?: "null"}, ")
+                append("\"duration\": ${checkin.duration ?: "null"}, ")
+                append("\"isCompleted\": ${checkin.is_completed}")
+                append("}")
+                if (index < checkins.size - 1) appendLine(",") else appendLine()
+            }
+            appendLine("  ]")
+
+            appendLine("}")
+        }
+    }
 }

@@ -24,17 +24,18 @@ import kotlinx.coroutines.withContext
 fun GroupScreen() {
     // 当前选中的分组，null表示在列表页面
     var selectedGroup by remember { mutableStateOf<GroupItem?>(null) }
+    // 使用局部变量来避免智能转换问题
+    val currentSelectedGroup = selectedGroup
 
-    if (selectedGroup == null) {
+    if (currentSelectedGroup == null) {
         // 分组列表页面
         GroupListScreen(onGroupClick = { group ->
             selectedGroup = group
         })
     } else {
         // 分组详情页面
-        val group = selectedGroup!!
         GroupDetailScreen(
-            group = group,
+            group = currentSelectedGroup,
             onBackClick = {
                 selectedGroup = null
             }

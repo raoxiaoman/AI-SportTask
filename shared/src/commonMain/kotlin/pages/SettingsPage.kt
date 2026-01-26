@@ -8,29 +8,58 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // 设置屏幕
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    onThemeChange: ((Boolean) -> Unit)? = null
+) {
+    val repository = SportTaskRepository()
+    val scope = rememberCoroutineScope()
+
     var showAboutDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var isClearing by remember { mutableStateOf(false) }
+    var isExporting by remember { mutableStateOf(false) }
+    var exportJson by remember { mutableStateOf("") }
+    var showSuccessMessage by remember { mutableStateOf(false) }
+
     var totalGroups by remember { mutableStateOf(0) }
     var totalActions by remember { mutableStateOf(0) }
+    var totalCheckins by remember { mutableStateOf(0) }
+
+    // 通知设置状态
+    var reminderEnabled by remember { mutableStateOf(false) }
+
+    // 深色模式状态
+    var isDarkMode by remember { mutableStateOf(false) }
+
+    // 加载统计数据
+    fun loadStats() {
+        scope.launch {
+            totalGroups = repository.getGroups().size
+            totalActions = repository.getAllActions().size
+            totalCheckins = withContext(Dispatchers.Default) {
+                repository.getCheckinsByDateRange("1970-01-01", "2099-12-31").size
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
-        val repository = SportTaskRepository()
-        totalGroups = repository.getGroups().size
-        totalActions = repository.getAllActions().size
+        loadStats()
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("⚙️ 设置") }
+                title = { Text("设置") }
             )
         }
     ) { innerPadding ->
@@ -54,19 +83,42 @@ fun SettingsScreen() {
                         subtitle = "$totalActions 个",
                         onClick = { }
                     )
+                    SettingsItem(
+                        icon = "✅",
+                        title = "打卡记录",
+                        subtitle = "$totalCheckins 条",
+                        onClick = { }
+                    )
+                }
+            }
+
+            // 外观设置部分
+            item {
+                SettingsSection(title = "外观") {
+                    SettingsSwitchItem(
+                        icon = "🌙",
+                        title = "深色模式",
+                        subtitle = if (isDarkMode) "已开启" else "未开启",
+                        checked = isDarkMode,
+                        onCheckedChange = { enabled ->
+                            isDarkMode = enabled
+                            onThemeChange?.invoke(enabled)
+                        }
+                    )
                 }
             }
 
             // 通知设置部分
             item {
                 SettingsSection(title = "通知") {
-                    var reminderEnabled by remember { mutableStateOf(true) }
                     SettingsSwitchItem(
                         icon = "🔔",
                         title = "训练提醒",
                         subtitle = "每天提醒您完成训练",
                         checked = reminderEnabled,
-                        onCheckedChange = { reminderEnabled = it }
+                        onCheckedChange = { enabled ->
+                            reminderEnabled = enabled
+                        }
                     )
                 }
             }
@@ -104,6 +156,21 @@ fun SettingsScreen() {
             // 数据管理部分
             item {
                 SettingsSection(title = "数据管理") {
+                    SettingsItem(
+                        icon = "📤",
+                        title = "导出数据",
+                        subtitle = "将数据导出为 JSON 格式",
+                        onClick = {
+                            isExporting = true
+                            scope.launch {
+                                exportJson = withContext(Dispatchers.Default) {
+                                    repository.exportDataAsJson()
+                                }
+                                isExporting = false
+                                showExportDialog = true
+                            }
+                        }
+                    )
                     SettingsItem(
                         icon = "🗑️",
                         title = "清除数据",
@@ -178,21 +245,104 @@ fun SettingsScreen() {
             onDismissRequest = { showClearDataDialog = false },
             title = { Text("确认清除") },
             text = {
-                Text("确定要删除所有训练记录和分组吗？此操作无法撤销。")
+                Column {
+                    Text("确定要删除以下所有数据吗？此操作无法撤销。")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "• $totalGroups 个训练分组",
+                        style = MaterialTheme.typography.body2,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "• $totalActions 个训练动作",
+                        style = MaterialTheme.typography.body2,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "• $totalCheckins 条打卡记录",
+                        style = MaterialTheme.typography.body2,
+                        color = Color.Gray
+                    )
+                }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        // TODO: 实现清除数据功能
-                        showClearDataDialog = false
+                if (isClearing) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                } else {
+                    TextButton(
+                        onClick = {
+                            isClearing = true
+                            scope.launch {
+                                withContext(Dispatchers.Default) {
+                                    repository.clearAllData()
+                                }
+                                isClearing = false
+                                showClearDataDialog = false
+                                loadStats()
+                                showSuccessMessage = true
+                            }
+                        }
+                    ) {
+                        Text("确定", color = Color.Red)
                     }
-                ) {
-                    Text("确定", color = Color.Red)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDataDialog = false }) {
+                TextButton(
+                    onClick = { showClearDataDialog = false },
+                    enabled = !isClearing
+                ) {
                     Text("取消")
+                }
+            }
+        )
+    }
+
+    // 导出数据对话框
+    if (showExportDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportDialog = false },
+            title = { Text("导出数据") },
+            text = {
+                Column {
+                    Text(
+                        text = "数据已导出为 JSON 格式。",
+                        style = MaterialTheme.typography.body2
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "共 $totalGroups 个分组、$totalActions 个动作、$totalCheckins 条记录",
+                        style = MaterialTheme.typography.body2,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = exportJson,
+                        onValueChange = {},
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        readOnly = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showExportDialog = false }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
+
+    // 成功提示
+    if (showSuccessMessage) {
+        AlertDialog(
+            onDismissRequest = { showSuccessMessage = false },
+            title = { Text("操作成功") },
+            text = { Text("数据已清除。") },
+            confirmButton = {
+                TextButton(onClick = { showSuccessMessage = false }) {
+                    Text("确定")
                 }
             }
         )

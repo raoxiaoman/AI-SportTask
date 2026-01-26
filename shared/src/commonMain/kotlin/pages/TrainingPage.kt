@@ -27,7 +27,9 @@ import java.time.LocalDate
 
 // 训练屏幕
 @Composable
-fun TrainingScreen() {
+fun TrainingScreen(
+    onTrainingComplete: (() -> Unit)? = null
+) {
     val repository = SportTaskRepository()
     var groups by remember { mutableStateOf<List<GroupItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -57,7 +59,8 @@ fun TrainingScreen() {
             onComplete = { result ->
                 showExecuteScreen = false
                 selectedGroup = null
-            }
+            },
+            onTrainingComplete = onTrainingComplete
         )
         return@TrainingScreen
     }
@@ -353,7 +356,8 @@ fun TrainingPrepareScreen(
 fun TrainingExecuteScreen(
     group: GroupItem,
     onBackClick: () -> Unit,
-    onComplete: (TrainingResult) -> Unit
+    onComplete: (TrainingResult) -> Unit,
+    onTrainingComplete: (() -> Unit)? = null
 ) {
     val repository = SportTaskRepository()
     var actions by remember { mutableStateOf<List<ActionItem>>(emptyList()) }
@@ -483,6 +487,7 @@ fun TrainingExecuteScreen(
                         completed = true
                     )
                     onComplete(result)
+                    onTrainingComplete?.invoke()
                 },
                 onSkip = {
                     val result = TrainingResult(
@@ -491,6 +496,7 @@ fun TrainingExecuteScreen(
                         completed = false
                     )
                     onComplete(result)
+                    onTrainingComplete?.invoke()
                 }
             )
         } else {

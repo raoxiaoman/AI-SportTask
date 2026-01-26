@@ -71,5 +71,21 @@ INSERT INTO checkin(date, group_id, action_id, duration, is_completed) VALUES (?
 getCheckinsByDateRange:
 SELECT id, date, group_id, action_id, duration, is_completed FROM checkin WHERE date BETWEEN ? AND ? ORDER BY date;
 
+updateCheckin:
+UPDATE checkin SET duration = ?, is_completed = ? WHERE id = ?;
+
+deleteCheckinById:
+DELETE FROM checkin WHERE id = ?;
+
 getDailySummary:
 SELECT date, COUNT(*) AS count, COALESCE(SUM(duration),0) AS total_duration FROM checkin WHERE is_completed = 1 AND date BETWEEN ? AND ? GROUP BY date ORDER BY date;
+
+-- Data management queries
+deleteAllCheckins:
+DELETE FROM checkin;
+
+deleteAllActions:
+DELETE FROM action;
+
+deleteAllActionGroups:
+DELETE FROM action_group;
