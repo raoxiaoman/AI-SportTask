@@ -6,7 +6,7 @@ plugins {
 }
 
 kotlin {
-    androidTarget()
+    androidTarget("android")
 
     listOf(
         iosX64(),
@@ -39,9 +39,9 @@ kotlin {
         }
         val androidMain by getting {
             dependencies {
-                api("androidx.activity:activity-compose:1.7.2")
-                api("androidx.appcompat:appcompat:1.6.1")
-                api("androidx.core:core-ktx:1.10.1")
+                api("androidx.activity:activity-compose:1.9.0")
+                api("androidx.appcompat:appcompat:1.7.0")
+                api("androidx.core:core-ktx:1.13.1")
                 implementation("app.cash.sqldelight:android-driver:2.0.2")
             }
         }
@@ -70,7 +70,6 @@ android {
 
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
-    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
 
     defaultConfig {
         minSdk = (findProperty("android.minSdk") as String).toInt()
