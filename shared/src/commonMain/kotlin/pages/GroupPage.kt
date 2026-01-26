@@ -264,6 +264,8 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
     // 编辑状态
     var editingAction by remember { mutableStateOf<ActionItem?>(null) }
     var showEditScreen by remember { mutableStateOf(false) }
+    var isSorting by remember { mutableStateOf(false) }
+    var hasUnsavedChanges by remember { mutableStateOf(false) }
 
     // 加载动作列表
     suspend fun loadActions() {
@@ -333,24 +335,72 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(group.name) },
+                title = { Text(if (isSorting) "调整排序" else group.name) },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "返回"
-                        )
+                    if (isSorting) {
+                        IconButton(onClick = {
+                            isSorting = false
+                            // 恢复原始顺序
+                            scope.launch {
+                                loadActions()
+                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "取消排序"
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.Filled.ArrowBack,
+                                contentDescription = "返回"
+                            )
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        editingAction = null
-                        showEditScreen = true
-                    }) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "添加动作"
-                        )
+                    if (isSorting) {
+                        // 排序模式下的保存按钮
+                        if (hasUnsavedChanges) {
+                            IconButton(onClick = {
+                                scope.launch {
+                                    // 保存排序
+                                    actions.forEachIndexed { index, action ->
+                                        if (action.orderIndex != index + 1) {
+                                            repository.updateActionOrder(action.id, (index + 1).toLong())
+                                        }
+                                    }
+                                    hasUnsavedChanges = false
+                                    isSorting = false
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = "保存排序"
+                                )
+                            }
+                        }
+                    } else {
+                        // 正常模式
+                        IconButton(onClick = {
+                            isSorting = true
+                            hasUnsavedChanges = false
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.List,
+                                contentDescription = "排序"
+                            )
+                        }
+                        IconButton(onClick = {
+                            editingAction = null
+                            showEditScreen = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "添加动作"
+                            )
+                        }
                     }
                 }
             )
@@ -400,13 +450,42 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
             } else {
                 LazyColumn {
                     items(actions) { action ->
+                        val index = actions.indexOf(action)
                         ActionCard(
                             action = action,
+                            isSorting = isSorting,
+                            canMoveUp = index > 0,
+                            canMoveDown = index < actions.size - 1,
                             onEditClick = {
                                 editingAction = action
                                 showEditScreen = true
                             },
-                            onDeleteClick = { /* Day 5 */ }
+                            onDeleteClick = {
+                                scope.launch {
+                                    repository.deleteAction(action.id)
+                                    loadActions()
+                                }
+                            },
+                            onMoveUp = {
+                                if (index > 0) {
+                                    val newActions = actions.toMutableList()
+                                    val temp = newActions[index - 1]
+                                    newActions[index - 1] = newActions[index]
+                                    newActions[index] = temp.copy(orderIndex = index)
+                                    actions = newActions.mapIndexed { i, a -> a.copy(orderIndex = i + 1) }
+                                    hasUnsavedChanges = true
+                                }
+                            },
+                            onMoveDown = {
+                                if (index < actions.size - 1) {
+                                    val newActions = actions.toMutableList()
+                                    val temp = newActions[index + 1]
+                                    newActions[index + 1] = newActions[index]
+                                    newActions[index] = temp.copy(orderIndex = index + 2)
+                                    actions = newActions.mapIndexed { i, a -> a.copy(orderIndex = i + 1) }
+                                    hasUnsavedChanges = true
+                                }
+                            }
                         )
                     }
                 }
@@ -481,14 +560,19 @@ fun GroupCard(group: GroupItem, onClick: () -> Unit, onEditClick: (GroupItem) ->
 @Composable
 fun ActionCard(
     action: ActionItem,
+    isSorting: Boolean = false,
+    canMoveUp: Boolean = true,
+    canMoveDown: Boolean = true,
     onEditClick: (ActionItem) -> Unit = {},
-    onDeleteClick: (ActionItem) -> Unit = {}
+    onDeleteClick: (ActionItem) -> Unit = {},
+    onMoveUp: () -> Unit = {},
+    onMoveDown: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        elevation = 2.dp
+        elevation = if (isSorting) 4.dp else 2.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -500,20 +584,47 @@ fun ActionCard(
                     text = "${action.orderIndex}. ${action.name}",
                     style = MaterialTheme.typography.subtitle1
                 )
-                Row {
-                    IconButton(onClick = { onEditClick(action) }) {
-                        Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = "编辑",
-                            tint = Color.Gray
-                        )
+                if (isSorting) {
+                    // 排序模式：显示移动按钮
+                    Row {
+                        IconButton(
+                            onClick = onMoveUp,
+                            enabled = canMoveUp
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowUp,
+                                contentDescription = "上移",
+                                tint = if (canMoveUp) Color.Gray else Color.LightGray
+                            )
+                        }
+                        IconButton(
+                            onClick = onMoveDown,
+                            enabled = canMoveDown
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowDown,
+                                contentDescription = "下移",
+                                tint = if (canMoveDown) Color.Gray else Color.LightGray
+                            )
+                        }
                     }
-                    IconButton(onClick = { onDeleteClick(action) }) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "删除",
-                            tint = Color.Gray
-                        )
+                } else {
+                    // 正常模式：显示编辑/删除按钮
+                    Row {
+                        IconButton(onClick = { onEditClick(action) }) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "编辑",
+                                tint = Color.Gray
+                            )
+                        }
+                        IconButton(onClick = { onDeleteClick(action) }) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "删除",
+                                tint = Color.Gray
+                            )
+                        }
                     }
                 }
             }
