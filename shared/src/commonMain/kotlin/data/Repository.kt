@@ -32,8 +32,17 @@ class SportTaskRepository(private val db: SportTaskDatabase = DatabaseProvider.d
         q.countActionsInGroup(groupId).executeAsOne()
     }
 
+    suspend fun getNextOrderIndex(groupId: Long): Long = withContext(Dispatchers.Default) {
+        val count = q.countActionsInGroup(groupId).executeAsOne()
+        count + 1
+    }
+
     suspend fun getActions(groupId: Long) = withContext(Dispatchers.Default) {
         q.getActionsByGroup(groupId).executeAsList()
+    }
+
+    suspend fun getAction(id: Long) = withContext(Dispatchers.Default) {
+        q.getActionById(id).executeAsOneOrNull()
     }
 
     suspend fun addAction(
@@ -50,6 +59,19 @@ class SportTaskRepository(private val db: SportTaskDatabase = DatabaseProvider.d
 
     suspend fun updateActionOrder(id: Long, orderIndex: Long) = withContext(Dispatchers.Default) {
         q.updateActionOrder(orderIndex, id)
+    }
+
+    suspend fun updateAction(
+        id: Long,
+        groupId: Long,
+        name: String,
+        stepsText: String?,
+        defaultTime: Long,
+        restTime: Long,
+        orderIndex: Long,
+        createdAt: String?
+    ) = withContext(Dispatchers.Default) {
+        q.updateAction(groupId, name, stepsText, defaultTime, restTime, orderIndex, createdAt, id)
     }
 
     suspend fun deleteAction(id: Long) = withContext(Dispatchers.Default) {
