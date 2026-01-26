@@ -261,12 +261,14 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
     var actions by remember { mutableStateOf<List<ActionItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // 从数据库加载动作列表
-    LaunchedEffect(group.id) {
+    // 编辑状态
+    var editingAction by remember { mutableStateOf<ActionItem?>(null) }
+    var showEditScreen by remember { mutableStateOf(false) }
+
+    // 加载动作列表
+    suspend fun loadActions() {
         isLoading = true
-        val dbActions = withContext(Dispatchers.Default) {
-            repository.getActions(group.id)
-        }
+        val dbActions = repository.getActions(group.id)
         actions = dbActions.map { action ->
             ActionItem(
                 id = action.id,
@@ -278,6 +280,54 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
             )
         }
         isLoading = false
+    }
+
+    LaunchedEffect(group.id) {
+        loadActions()
+    }
+
+    if (showEditScreen) {
+        ActionEditScreen(
+            groupId = group.id,
+            action = editingAction,
+            onBackClick = {
+                showEditScreen = false
+                editingAction = null
+            },
+            onSaveClick = { action ->
+                scope.launch {
+                    val now = java.time.LocalDate.now().toString()
+                    if (editingAction != null) {
+                        // 编辑模式
+                        repository.updateAction(
+                            id = action.id,
+                            groupId = group.id,
+                            name = action.name,
+                            stepsText = action.stepsText,
+                            defaultTime = action.defaultTime.toLong(),
+                            restTime = action.restTime.toLong(),
+                            orderIndex = action.orderIndex.toLong(),
+                            createdAt = now
+                        )
+                    } else {
+                        // 添加模式
+                        repository.addAction(
+                            groupId = group.id,
+                            name = action.name,
+                            stepsText = action.stepsText,
+                            defaultTime = action.defaultTime.toLong(),
+                            restTime = action.restTime.toLong(),
+                            orderIndex = action.orderIndex.toLong(),
+                            createdAt = now
+                        )
+                    }
+                    loadActions()
+                    showEditScreen = false
+                    editingAction = null
+                }
+            }
+        )
+        return@GroupDetailScreen
     }
 
     Scaffold(
@@ -293,23 +343,23 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* 编辑 */ }) {
+                    IconButton(onClick = {
+                        editingAction = null
+                        showEditScreen = true
+                    }) {
                         Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = "编辑"
-                        )
-                    }
-                    IconButton(onClick = { /* 删除 */ }) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "删除"
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "添加动作"
                         )
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* 添加动作 */ }) {
+            FloatingActionButton(onClick = {
+                editingAction = null
+                showEditScreen = true
+            }) {
                 Text("+")
             }
         }
@@ -350,7 +400,14 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
             } else {
                 LazyColumn {
                     items(actions) { action ->
-                        ActionCard(action = action)
+                        ActionCard(
+                            action = action,
+                            onEditClick = {
+                                editingAction = action
+                                showEditScreen = true
+                            },
+                            onDeleteClick = { /* Day 5 */ }
+                        )
                     }
                 }
             }
@@ -422,7 +479,11 @@ fun GroupCard(group: GroupItem, onClick: () -> Unit, onEditClick: (GroupItem) ->
 
 // 动作卡片组件
 @Composable
-fun ActionCard(action: ActionItem) {
+fun ActionCard(
+    action: ActionItem,
+    onEditClick: (ActionItem) -> Unit = {},
+    onDeleteClick: (ActionItem) -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -435,12 +496,26 @@ fun ActionCard(action: ActionItem) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = action.name, style = MaterialTheme.typography.subtitle1)
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown,
-                    contentDescription = "展开详情",
-                    tint = Color.Gray
+                Text(
+                    text = "${action.orderIndex}. ${action.name}",
+                    style = MaterialTheme.typography.subtitle1
                 )
+                Row {
+                    IconButton(onClick = { onEditClick(action) }) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = "编辑",
+                            tint = Color.Gray
+                        )
+                    }
+                    IconButton(onClick = { onDeleteClick(action) }) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "删除",
+                            tint = Color.Gray
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "默认时长: ${action.defaultTime}秒", style = MaterialTheme.typography.body2)
