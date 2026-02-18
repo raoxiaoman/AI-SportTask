@@ -402,12 +402,22 @@ fun TrainingExecuteScreen(
 
             while (remainingSeconds > 0 && isRunning) {
                 delay(1000)
+                
+                // 倒计时 3 秒时播放提示音和震动
+                if (remainingSeconds <= 3) {
+                    playCountdownSound()
+                    vibrateShort()
+                }
+                
                 remainingSeconds--
                 totalElapsedSeconds++
             }
 
             // 时间到，切换状态
             if (isRunning) {
+                playEndSound()
+                vibrateMedium()
+                
                 if (isResting) {
                     // 休息结束，下一个动作
                     if (currentActionIndex < actions.size - 1) {
@@ -418,6 +428,7 @@ fun TrainingExecuteScreen(
                         // 训练完成
                         isCompleted = true
                         isRunning = false
+                        vibrateLong()
                     }
                 } else {
                     // 动作结束，进入休息
@@ -434,6 +445,7 @@ fun TrainingExecuteScreen(
                             // 训练完成
                             isCompleted = true
                             isRunning = false
+                            vibrateLong()
                         }
                     }
                 }
@@ -595,6 +607,9 @@ fun TrainingExecuteScreen(
                     // 暂停/开始
                     FloatingActionButton(
                         onClick = {
+                            if (!isRunning) {
+                                playStartSound()
+                            }
                             isRunning = !isRunning
                         },
                         backgroundColor = if (isRunning) MaterialTheme.colors.error else MaterialTheme.colors.primary
