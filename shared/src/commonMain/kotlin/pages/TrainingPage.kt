@@ -421,10 +421,10 @@ fun TrainingExecuteScreen(
                     }
                 } else {
                     // 动作结束，进入休息
-                    val action = actions[currentActionIndex]
-                    if (action.restTime > 0) {
+                    val currentActionItem = actions[currentActionIndex]
+                    if (currentActionItem.restTime > 0) {
                         isResting = true
-                        remainingSeconds = action.restTime
+                        remainingSeconds = currentActionItem.restTime
                     } else {
                         // 无休息，直接下一个
                         if (currentActionIndex < actions.size - 1) {
@@ -588,6 +588,7 @@ fun TrainingExecuteScreen(
                         },
                         backgroundColor = MaterialTheme.colors.secondary
                     ) {
+                        @Suppress("DEPRECATION")
                         Icon(Icons.Filled.ArrowForward, contentDescription = "跳过")
                     }
 
@@ -647,6 +648,7 @@ fun TrainingExecuteScreen(
     }
 }
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun CompletedContent(
     group: GroupItem,
