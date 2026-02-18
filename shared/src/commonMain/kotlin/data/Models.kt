@@ -41,6 +41,17 @@ data class TrainingResult(
 )
 
 /**
+ * 导入结果数据类
+ */
+data class ImportResult(
+    val success: Boolean,
+    val groupsImported: Int,
+    val actionsImported: Int,
+    val checkinsImported: Int,
+    val errorMessage: String? = null
+)
+
+/**
  * 格式化时间
  */
 fun formatTime(seconds: Int): String {

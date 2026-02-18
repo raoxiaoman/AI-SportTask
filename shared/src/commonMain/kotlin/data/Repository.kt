@@ -191,4 +191,84 @@ class SportTaskRepository(private val db: SportTaskDatabase = DatabaseProvider.d
             appendLine("}")
         }
     }
+
+    // Import data from JSON
+    suspend fun importDataFromJson(json: String): ImportResult = withContext(Dispatchers.Default) {
+        try {
+            // 简单的 JSON 解析
+            var groupsImported = 0
+            var actionsImported = 0
+            var checkinsImported = 0
+            
+            // 解析 groups
+            val groupsRegex = """\"groups\"\s*:\s*\[(.*?)\]""".toRegex()
+            val groupMatch = groupsRegex.find(json)
+            
+            if (groupMatch != null) {
+                val groupsContent = groupMatch.groupValues[1]
+                val groupRegex = """\{\s*"id":\s*(\d+),\s*"name":\s*"([^"]*)",\s*"createdAt":\s*"([^"]*)"\s*\}""".toRegex()
+                
+                groupRegex.findAll(groupsContent).forEach { match ->
+                    val name = match.groupValues[2]
+                    val createdAt = match.groupValues[3].ifEmpty { java.time.LocalDate.now().toString() }
+                    q.insertActionGroup(name, createdAt)
+                    groupsImported++
+                }
+            }
+            
+            // 获取所有分组ID映射
+            val groupIdMap = mutableMapOf<Long, Long>()
+            val existingGroups = q.getAllActionGroups().executeAsList()
+            existingGroups.forEachIndexed { index, group ->
+                groupIdMap[index + 1L] = group.id
+            }
+            
+            // 解析 actions
+            val actionsRegex = """\"actions\"\s*:\s*\[(.*?)\]""".toRegex()
+            val actionMatch = actionsRegex.find(json)
+            
+            if (actionMatch != null) {
+                val actionsContent = actionMatch.groupValues[1]
+                val actionRegex = """\{\s*"id":\s*(\d+),\s*"groupId":\s*(\d+),\s*"name":\s*"([^"]*)",\s*"stepsText":\s*"([^"]*)",\s*"defaultTime":\s*(\d+),\s*"restTime":\s*(\d+),\s*"orderIndex":\s*(\d+),\s*"createdAt":\s*"([^"]*)"\s*\}""".toRegex()
+                
+                actionRegex.findAll(actionsContent).forEach { match ->
+                    val oldGroupId = match.groupValues[2].toLongOrNull() ?: return@forEach
+                    val newGroupId = groupIdMap[oldGroupId] ?: return@forEach
+                    val name = match.groupValues[3]
+                    val stepsText = match.groupValues[4]
+                    val defaultTime = match.groupValues[5].toLongOrNull() ?: 30
+                    val restTime = match.groupValues[6].toLongOrNull() ?: 10
+                    val orderIndex = match.groupValues[7].toLongOrNull() ?: 1
+                    val createdAt = match.groupValues[8].ifEmpty { java.time.LocalDate.now().toString() }
+                    
+                    q.insertAction(newGroupId, name, stepsText, defaultTime, restTime, orderIndex, createdAt)
+                    actionsImported++
+                }
+            }
+            
+            // 解析 checkins
+            val checkinsRegex = """\"checkins\"\s*:\s*\[(.*?)\]""".toRegex()
+            val checkinMatch = checkinsRegex.find(json)
+            
+            if (checkinMatch != null) {
+                val checkinsContent = checkinMatch.groupValues[1]
+                val checkinRegex = """\{\s*"id":\s*(\d+),\s*"date":\s*"([^"]*)",\s*"groupId":\s*(\d+|null),\s*"actionId":\s*(\d+|null),\s*"duration":\s*(\d+|null),\s*"isCompleted":\s*(\d+)\s*\}""".toRegex()
+                
+                checkinRegex.findAll(checkinsContent).forEach { match ->
+                    val date = match.groupValues[2]
+                    val groupId = match.groupValues[3].toLongOrNull()?.let { groupIdMap[it] }
+                    val actionId = match.groupValues[4].toLongOrNull()
+                    val duration = match.groupValues[5].toLongOrNull()
+                    val isCompleted = match.groupValues[6].toLongOrNull() ?: 0
+                    
+                    q.insertCheckin(date, groupId, actionId, duration, isCompleted)
+                    checkinsImported++
+                }
+            }
+            
+            ImportResult(success = true, groupsImported, actionsImported, checkinsImported)
+        } catch (e: Exception) {
+            ImportResult(success = false, 0, 0, 0, e.message)
+        }
+    }
 }

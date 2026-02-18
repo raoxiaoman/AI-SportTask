@@ -27,10 +27,14 @@ fun SettingsScreen(
     var showClearDataDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showTimePickerDialog by remember { mutableStateOf(false) }
+    var showImportDialog by remember { mutableStateOf(false) }
     var isClearing by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
+    var isImporting by remember { mutableStateOf(false) }
     var exportJson by remember { mutableStateOf("") }
+    var importJson by remember { mutableStateOf("") }
     var showSuccessMessage by remember { mutableStateOf(false) }
+    var importResult by remember { mutableStateOf<data.ImportResult?>(null) }
 
     var totalGroups by remember { mutableStateOf(0) }
     var totalActions by remember { mutableStateOf(0) }
@@ -182,6 +186,14 @@ fun SettingsScreen(
                                 isExporting = false
                                 showExportDialog = true
                             }
+                        }
+                    )
+                    SettingsItem(
+                        icon = "📥",
+                        title = "导入数据",
+                        subtitle = "从 JSON 格式导入数据",
+                        onClick = {
+                            showImportDialog = true
                         }
                     )
                     SettingsItem(
@@ -342,6 +354,91 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { showExportDialog = false }) {
                     Text("关闭")
+                }
+            }
+        )
+    }
+
+    // 导入数据对话框
+    if (showImportDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showImportDialog = false
+                importJson = ""
+                importResult = null
+            },
+            title = { Text("导入数据") },
+            text = {
+                Column {
+                    Text(
+                        text = "请粘贴 JSON 数据：",
+                        style = MaterialTheme.typography.body2
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = importJson,
+                        onValueChange = { importJson = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp),
+                        placeholder = { Text("粘贴 JSON 数据...") }
+                    )
+                    
+                    if (importResult != null) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        if (importResult!!.success) {
+                            Text(
+                                text = "✅ 导入成功！",
+                                style = MaterialTheme.typography.body1,
+                                color = Color(0xFF4CAF50)
+                            )
+                            Text(
+                                text = "分组: ${importResult!!.groupsImported}, 动作: ${importResult!!.actionsImported}, 打卡: ${importResult!!.checkinsImported}",
+                                style = MaterialTheme.typography.body2,
+                                color = Color.Gray
+                            )
+                        } else {
+                            Text(
+                                text = "❌ 导入失败: ${importResult!!.errorMessage}",
+                                style = MaterialTheme.typography.body1,
+                                color = Color.Red
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (isImporting) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                } else {
+                    TextButton(
+                        onClick = {
+                            if (importJson.isNotBlank()) {
+                                isImporting = true
+                                scope.launch {
+                                    importResult = withContext(Dispatchers.Default) {
+                                        repository.importDataFromJson(importJson)
+                                    }
+                                    isImporting = false
+                                    if (importResult?.success == true) {
+                                        loadStats()
+                                    }
+                                }
+                            }
+                        },
+                        enabled = importJson.isNotBlank()
+                    ) {
+                        Text("导入")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showImportDialog = false
+                    importJson = ""
+                    importResult = null
+                }) {
+                    Text("取消")
                 }
             }
         )
