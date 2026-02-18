@@ -26,6 +26,7 @@ fun SettingsScreen(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var showTimePickerDialog by remember { mutableStateOf(false) }
     var isClearing by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
     var exportJson by remember { mutableStateOf("") }
@@ -37,6 +38,13 @@ fun SettingsScreen(
 
     // 通知设置状态
     var reminderEnabled by remember { mutableStateOf(false) }
+    var reminderHour by remember { mutableStateOf(9) }
+    var reminderMinute by remember { mutableStateOf(0) }
+
+    // 训练设置状态
+    var autoRestEnabled by remember { mutableStateOf(true) }
+    var soundEnabled by remember { mutableStateOf(true) }
+    var vibrationEnabled by remember { mutableStateOf(false) }
 
     // 深色模式状态
     var isDarkMode by remember { mutableStateOf(false) }
@@ -114,19 +122,26 @@ fun SettingsScreen(
                     SettingsSwitchItem(
                         icon = "🔔",
                         title = "训练提醒",
-                        subtitle = "每天提醒您完成训练",
+                        subtitle = if (reminderEnabled) "每天 ${reminderHour.toString().padStart(2, '0')}:${reminderMinute.toString().padStart(2, '0')} 提醒" else "每天提醒您完成训练",
                         checked = reminderEnabled,
                         onCheckedChange = { enabled ->
                             reminderEnabled = enabled
                         }
                     )
+                    if (reminderEnabled) {
+                        SettingsItem(
+                            icon = "🕐",
+                            title = "提醒时间",
+                            subtitle = "${reminderHour.toString().padStart(2, '0')}:${reminderMinute.toString().padStart(2, '0')}",
+                            onClick = { showTimePickerDialog = true }
+                        )
+                    }
                 }
             }
 
             // 训练设置部分
             item {
                 SettingsSection(title = "训练") {
-                    var autoRestEnabled by remember { mutableStateOf(true) }
                     SettingsSwitchItem(
                         icon = "⏱️",
                         title = "自动休息",
@@ -134,7 +149,6 @@ fun SettingsScreen(
                         checked = autoRestEnabled,
                         onCheckedChange = { autoRestEnabled = it }
                     )
-                    var soundEnabled by remember { mutableStateOf(true) }
                     SettingsSwitchItem(
                         icon = "🔊",
                         title = "声音提示",
@@ -142,7 +156,6 @@ fun SettingsScreen(
                         checked = soundEnabled,
                         onCheckedChange = { soundEnabled = it }
                     )
-                    var vibrationEnabled by remember { mutableStateOf(false) }
                     SettingsSwitchItem(
                         icon = "📳",
                         title = "震动反馈",
@@ -334,6 +347,20 @@ fun SettingsScreen(
         )
     }
 
+    // 时间选择器对话框
+    if (showTimePickerDialog) {
+        TimePickerDialog(
+            initialHour = reminderHour,
+            initialMinute = reminderMinute,
+            onConfirm = { hour, minute ->
+                reminderHour = hour
+                reminderMinute = minute
+                showTimePickerDialog = false
+            },
+            onDismiss = { showTimePickerDialog = false }
+        )
+    }
+
     // 成功提示
     if (showSuccessMessage) {
         AlertDialog(
@@ -437,4 +464,79 @@ fun SettingsSwitchItem(
             onCheckedChange = onCheckedChange
         )
     }
+}
+
+@Composable
+fun TimePickerDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    onConfirm: (Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedHour by remember { mutableStateOf(initialHour) }
+    var selectedMinute by remember { mutableStateOf(initialMinute) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择提醒时间") },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 小时选择
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { 
+                        selectedHour = (selectedHour + 1) % 24 
+                    }) {
+                        Text("▲", style = MaterialTheme.typography.h5)
+                    }
+                    Text(
+                        text = selectedHour.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.h3
+                    )
+                    IconButton(onClick = { 
+                        selectedHour = if (selectedHour > 0) selectedHour - 1 else 23 
+                    }) {
+                        Text("▼", style = MaterialTheme.typography.h5)
+                    }
+                }
+                
+                Text(
+                    text = " : ",
+                    style = MaterialTheme.typography.h3,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+                
+                // 分钟选择
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { 
+                        selectedMinute = (selectedMinute + 5) % 60 
+                    }) {
+                        Text("▲", style = MaterialTheme.typography.h5)
+                    }
+                    Text(
+                        text = selectedMinute.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.h3
+                    )
+                    IconButton(onClick = { 
+                        selectedMinute = if (selectedMinute >= 5) selectedMinute - 5 else 55 
+                    }) {
+                        Text("▼", style = MaterialTheme.typography.h5)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedHour, selectedMinute) }) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }
