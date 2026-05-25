@@ -1,23 +1,35 @@
 package pages
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import data.SportTaskRepository
 import data.GroupItem
 import data.ActionItem
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 // 分组屏幕
 @Composable
@@ -254,23 +266,24 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
     }
 }
 
-// 分组详情页面
+// 分组详情页面 — 支持拖拽排序
 @Composable
 fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
     val repository = SportTaskRepository()
     val scope = rememberCoroutineScope()
 
-    // 动作列表状态
     var actions by remember { mutableStateOf<List<ActionItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // 编辑状态
     var editingAction by remember { mutableStateOf<ActionItem?>(null) }
     var showEditScreen by remember { mutableStateOf(false) }
-    var isSorting by remember { mutableStateOf(false) }
-    var hasUnsavedChanges by remember { mutableStateOf(false) }
 
-    // 加载动作列表
+    // 拖拽排序状态
+    var draggedIndex by remember { mutableStateOf(-1) }
+    var dragOffset by remember { mutableStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    var itemHeights by remember { mutableStateOf<Map<Int, Float>>(emptyMap()) }
+
     suspend fun loadActions() {
         isLoading = true
         val dbActions = repository.getActions(group.id)
@@ -291,6 +304,18 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
         loadActions()
     }
 
+    fun saveOrder() {
+        scope.launch {
+            actions.forEachIndexed { index, action ->
+                val newOrder = index + 1
+                if (action.orderIndex != newOrder) {
+                    repository.updateActionOrder(action.id, newOrder.toLong())
+                }
+            }
+            loadActions()
+        }
+    }
+
     if (showEditScreen) {
         ActionEditScreen(
             groupId = group.id,
@@ -303,7 +328,6 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
                 scope.launch {
                     val now = java.time.LocalDate.now().toString()
                     if (editingAction != null) {
-                        // 编辑模式
                         repository.updateAction(
                             id = action.id,
                             groupId = group.id,
@@ -315,7 +339,6 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
                             createdAt = now
                         )
                     } else {
-                        // 添加模式
                         repository.addAction(
                             groupId = group.id,
                             name = action.name,
@@ -338,72 +361,18 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isSorting) "调整排序" else group.name) },
+                title = { Text(group.name, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    if (isSorting) {
-                        IconButton(onClick = {
-                            isSorting = false
-                            // 恢复原始顺序
-                            scope.launch {
-                                loadActions()
-                            }
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "取消排序"
-                            )
-                        }
-                    } else {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowBack,
-                                contentDescription = "返回"
-                            )
-                        }
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
-                    if (isSorting) {
-                        // 排序模式下的保存按钮
-                        if (hasUnsavedChanges) {
-                            IconButton(onClick = {
-                                scope.launch {
-                                    // 保存排序
-                                    actions.forEachIndexed { index, action ->
-                                        if (action.orderIndex != index + 1) {
-                                            repository.updateActionOrder(action.id, (index + 1).toLong())
-                                        }
-                                    }
-                                    hasUnsavedChanges = false
-                                    isSorting = false
-                                }
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Check,
-                                    contentDescription = "保存排序"
-                                )
-                            }
-                        }
-                    } else {
-                        // 正常模式
-                        IconButton(onClick = {
-                            isSorting = true
-                            hasUnsavedChanges = false
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.List,
-                                contentDescription = "排序"
-                            )
-                        }
-                        IconButton(onClick = {
-                            editingAction = null
-                            showEditScreen = true
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "添加动作"
-                            )
-                        }
+                    IconButton(onClick = {
+                        editingAction = null
+                        showEditScreen = true
+                    }) {
+                        Icon(Icons.Filled.Add, contentDescription = "添加动作")
                     }
                 }
             )
@@ -417,48 +386,48 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
             }
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            // 开始训练按钮
-            Button(
-                onClick = { /* 开始训练 */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text("开始训练")
+        Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+            // 提示条
+            if (actions.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MaterialTheme.colors.primary.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "长按 ⠿ 拖拽排序，放手自动保存",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.primary,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
             }
 
-            // 动作列表
-            Text(
-                text = "动作列表",
-                style = MaterialTheme.typography.h6,
-                modifier = Modifier.padding(16.dp)
-            )
-
-            // 加载状态
             if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else if (actions.isEmpty()) {
-                Text(
-                    text = "暂无动作，点击 + 添加",
-                    style = MaterialTheme.typography.body2,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(16.dp)
-                )
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("暂无动作", style = MaterialTheme.typography.h6, color = Color.Gray)
+                        Spacer(Modifier.height(8.dp))
+                        Text("点击 + 添加第一个动作", style = MaterialTheme.typography.body2, color = Color.Gray)
+                    }
+                }
             } else {
-                LazyColumn {
-                    items(actions) { action ->
-                        val index = actions.indexOf(action)
-                        ActionCard(
+                Column(
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    actions.forEachIndexed { index, action ->
+                        val isThisDragged = index == draggedIndex && isDragging
+
+                        DraggableActionCard(
                             action = action,
-                            isSorting = isSorting,
-                            canMoveUp = index > 0,
-                            canMoveDown = index < actions.size - 1,
+                            index = index,
+                            isDragging = isThisDragged,
+                            dragOffsetY = if (isThisDragged) dragOffset else 0f,
                             onEditClick = {
                                 editingAction = action
                                 showEditScreen = true
@@ -469,28 +438,51 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
                                     loadActions()
                                 }
                             },
-                            onMoveUp = {
-                                if (index > 0) {
-                                    val newActions = actions.toMutableList()
-                                    val temp = newActions[index - 1]
-                                    newActions[index - 1] = newActions[index]
-                                    newActions[index] = temp.copy(orderIndex = index)
-                                    actions = newActions.mapIndexed { i, a -> a.copy(orderIndex = i + 1) }
-                                    hasUnsavedChanges = true
+                            onDragStart = {
+                                draggedIndex = index
+                                dragOffset = 0f
+                                isDragging = true
+                            },
+                            onDrag = { deltaY ->
+                                dragOffset += deltaY
+                                val currentIndex = draggedIndex
+                                // 交换逻辑：跨越一半高度时触发
+                                actions.getOrNull(currentIndex)?.let { currentAction ->
+                                    val height = itemHeights[currentIndex] ?: 100f
+                                    val threshold = height * 0.5f
+
+                                    if (dragOffset < -threshold && currentIndex > 0) {
+                                        val list = actions.toMutableList()
+                                        val temp = list[currentIndex]
+                                        list[currentIndex] = list[currentIndex - 1]
+                                        list[currentIndex - 1] = temp
+                                        actions = list
+                                        draggedIndex = currentIndex - 1
+                                        dragOffset += threshold
+                                    }
+                                    if (dragOffset > threshold && currentIndex < actions.size - 1) {
+                                        val list = actions.toMutableList()
+                                        val temp = list[currentIndex]
+                                        list[currentIndex] = list[currentIndex + 1]
+                                        list[currentIndex + 1] = temp
+                                        actions = list
+                                        draggedIndex = currentIndex + 1
+                                        dragOffset -= threshold
+                                    }
                                 }
                             },
-                            onMoveDown = {
-                                if (index < actions.size - 1) {
-                                    val newActions = actions.toMutableList()
-                                    val temp = newActions[index + 1]
-                                    newActions[index + 1] = newActions[index]
-                                    newActions[index] = temp.copy(orderIndex = index + 2)
-                                    actions = newActions.mapIndexed { i, a -> a.copy(orderIndex = i + 1) }
-                                    hasUnsavedChanges = true
+                            onDragEnd = {
+                                if (draggedIndex >= 0) {
+                                    isDragging = false
+                                    dragOffset = 0f
+                                    saveOrder()
                                 }
-                            }
+                            },
+                            onHeightMeasured = { h -> itemHeights = itemHeights + (index to h) }
                         )
                     }
+
+                    Spacer(Modifier.height(80.dp))
                 }
             }
         }
@@ -546,85 +538,102 @@ fun GroupCard(group: GroupItem, onClick: () -> Unit, onEditClick: (GroupItem) ->
     }
 }
 
-// 动作卡片组件
+// 拖拽卡片组件 — 支持长按拖拽排序
 @Composable
-fun ActionCard(
+fun DraggableActionCard(
     action: ActionItem,
-    isSorting: Boolean = false,
-    canMoveUp: Boolean = true,
-    canMoveDown: Boolean = true,
-    onEditClick: (ActionItem) -> Unit = {},
-    onDeleteClick: (ActionItem) -> Unit = {},
-    onMoveUp: () -> Unit = {},
-    onMoveDown: () -> Unit = {}
+    index: Int,
+    isDragging: Boolean,
+    dragOffsetY: Float,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
+    onHeightMeasured: (Float) -> Unit
 ) {
+    val elevation by animateFloatAsState(
+        targetValue = if (isDragging) 8f else 2f,
+        animationSpec = tween(150),
+        label = "elevation"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        elevation = if (isSorting) 4.dp else 2.dp
+            .padding(horizontal = 12.dp, vertical = 3.dp)
+            .zIndex(if (isDragging) 10f else 0f)
+            .graphicsLayer {
+                translationY = if (isDragging) dragOffsetY else 0f
+                scaleX = if (isDragging) 1.03f else 1f
+                scaleY = if (isDragging) 1.03f else 1f
+            }
+            .onGloballyPositioned { coordinates ->
+                onHeightMeasured(coordinates.size.height.toFloat())
+            },
+        elevation = elevation.dp
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 4.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 拖拽手柄
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { onDragStart() },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onDrag(dragAmount.y)
+                            },
+                            onDragEnd = { onDragEnd() },
+                            onDragCancel = { onDragEnd() }
+                        )
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${action.orderIndex}. ${action.name}",
-                    style = MaterialTheme.typography.subtitle1
+                    text = "⠿",
+                    style = MaterialTheme.typography.body1,
+                    color = if (isDragging) MaterialTheme.colors.primary else Color.Gray
                 )
-                if (isSorting) {
-                    // 排序模式：显示移动按钮
-                    Row {
-                        IconButton(
-                            onClick = onMoveUp,
-                            enabled = canMoveUp
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.KeyboardArrowUp,
-                                contentDescription = "上移",
-                                tint = if (canMoveUp) Color.Gray else Color.LightGray
-                            )
-                        }
-                        IconButton(
-                            onClick = onMoveDown,
-                            enabled = canMoveDown
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.KeyboardArrowDown,
-                                contentDescription = "下移",
-                                tint = if (canMoveDown) Color.Gray else Color.LightGray
-                            )
-                        }
-                    }
-                } else {
-                    // 正常模式：显示编辑/删除按钮
-                    Row {
-                        IconButton(onClick = { onEditClick(action) }) {
-                            Icon(
-                                imageVector = Icons.Filled.Edit,
-                                contentDescription = "编辑",
-                                tint = Color.Gray
-                            )
-                        }
-                        IconButton(onClick = { onDeleteClick(action) }) {
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = "删除",
-                                tint = Color.Gray
-                            )
-                        }
-                    }
-                }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "默认时长: ${action.defaultTime}秒", style = MaterialTheme.typography.body2)
-            Text(text = "休息时间: ${action.restTime}秒", style = MaterialTheme.typography.body2)
-            if (action.stepsText.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "步骤:", style = MaterialTheme.typography.body2)
-                Text(text = action.stepsText, style = MaterialTheme.typography.body2)
+
+            // 序号
+            Text(
+                text = "${index + 1}.",
+                style = MaterialTheme.typography.body1,
+                color = MaterialTheme.colors.primary,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.width(32.dp)
+            )
+
+            // 名称和详情
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = action.name,
+                    style = MaterialTheme.typography.subtitle1,
+                    fontWeight = if (isDragging) FontWeight.Bold else FontWeight.Normal
+                )
+                Text(
+                    text = "${action.defaultTime}秒 / 休息${action.restTime}秒",
+                    style = MaterialTheme.typography.caption,
+                    color = Color.Gray
+                )
+            }
+
+            // 操作按钮
+            if (!isDragging) {
+                IconButton(onClick = onEditClick, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.Edit, contentDescription = "编辑", tint = Color.Gray, modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = onDeleteClick, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.Delete, contentDescription = "删除", tint = Color.Gray, modifier = Modifier.size(18.dp))
+                }
             }
         }
     }
