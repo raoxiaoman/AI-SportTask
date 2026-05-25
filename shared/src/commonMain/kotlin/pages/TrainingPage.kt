@@ -1,16 +1,28 @@
 package pages
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -514,11 +526,17 @@ fun TrainingExecuteScreen(
         } else {
             // 训练进行中
             val currentAction = actions[currentActionIndex]
-            val progress = if (isResting) {
-                (currentAction.restTime - remainingSeconds).toFloat() / currentAction.restTime
-            } else {
-                (currentAction.defaultTime - remainingSeconds).toFloat() / currentAction.defaultTime
-            }
+            val totalTimeForPhase = if (isResting) currentAction.restTime else currentAction.defaultTime
+            val progress = if (totalTimeForPhase > 0) {
+                (totalTimeForPhase - remainingSeconds).toFloat() / totalTimeForPhase
+            } else 0f
+
+            // 动画值
+            val animatedProgress by animateFloatAsState(
+                targetValue = progress,
+                animationSpec = tween(durationMillis = 300),
+                label = "progress"
+            )
 
             Column(
                 modifier = Modifier
@@ -527,137 +545,215 @@ fun TrainingExecuteScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 进度指示
-                Text(
-                    text = if (isResting) "休息时间" else "动作 ${currentActionIndex + 1}/${actions.size}",
-                    style = MaterialTheme.typography.subtitle1,
-                    color = if (isResting) MaterialTheme.colors.secondary else MaterialTheme.colors.primary
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // 进度条
-                LinearProgressIndicator(
-                    progress = progress,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // 当前动作名称
-                Text(
-                    text = if (isResting) "休息" else currentAction.name,
-                    style = MaterialTheme.typography.h4,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(48.dp))
-
-                // 倒计时
-                Text(
-                    text = formatTime(remainingSeconds),
-                    style = MaterialTheme.typography.h2,
-                    color = if (remainingSeconds <= 5) MaterialTheme.colors.error else MaterialTheme.colors.primary
-                )
-
-                Spacer(modifier = Modifier.height(48.dp))
-
-                // 控制按钮
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    modifier = Modifier.fillMaxWidth()
+                // 状态标签
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = 0.dp,
+                    backgroundColor = if (isResting)
+                        MaterialTheme.colors.secondary.copy(alpha = 0.1f)
+                    else
+                        MaterialTheme.colors.primary.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(50)
                 ) {
-                    // 跳过
-                    FloatingActionButton(
-                        onClick = {
-                            if (isResting) {
-                                // 跳过休息，直接下一个动作
-                                if (currentActionIndex < actions.size - 1) {
-                                    currentActionIndex++
-                                    isResting = false
-                                    remainingSeconds = actions[currentActionIndex].defaultTime
-                                } else {
-                                    isCompleted = true
-                                    isRunning = false
-                                }
-                            } else {
-                                // 跳过当前动作
-                                if (currentActionIndex < actions.size - 1) {
-                                    if (actions[currentActionIndex].restTime > 0) {
-                                        isResting = true
-                                        remainingSeconds = actions[currentActionIndex].restTime
-                                    } else {
-                                        currentActionIndex++
-                                        remainingSeconds = actions[currentActionIndex].defaultTime
-                                    }
-                                } else {
-                                    isCompleted = true
-                                    isRunning = false
-                                }
-                            }
-                        },
-                        backgroundColor = MaterialTheme.colors.secondary
-                    ) {
-                        @Suppress("DEPRECATION")
-                        Icon(Icons.Filled.ArrowForward, contentDescription = "跳过")
-                    }
+                    Text(
+                        text = if (isResting) "🧘 休息时间" else "🏋️ 动作 ${currentActionIndex + 1}/${actions.size}",
+                        style = MaterialTheme.typography.subtitle1,
+                        color = if (isResting) MaterialTheme.colors.secondary else MaterialTheme.colors.primary,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    )
+                }
 
-                    // 暂停/开始
-                    FloatingActionButton(
-                        onClick = {
-                            if (!isRunning) {
-                                playStartSound()
-                            }
-                            isRunning = !isRunning
-                        },
-                        backgroundColor = if (isRunning) MaterialTheme.colors.error else MaterialTheme.colors.primary
-                    ) {
-                        Icon(
-                            if (isRunning) Icons.Filled.Close else Icons.Filled.PlayArrow,
-                            contentDescription = if (isRunning) "暂停" else "开始"
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // 进度环 + 倒计时 (居中区域)
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(280.dp)
+                ) {
+                    // 背景圆环
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val strokeWidth = 16.dp.toPx()
+                        val radius = (size.minDimension - strokeWidth) / 2
+                        val topLeft = Offset(
+                            (size.width - radius * 2) / 2,
+                            (size.height - radius * 2) / 2
+                        )
+
+                        // 背景弧
+                        drawArc(
+                            color = if (isResting) Color(0xFFE0E0E0) else Color(0xFFBBDEFB),
+                            startAngle = -90f,
+                            sweepAngle = 360f,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = Size(radius * 2, radius * 2),
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                        )
+
+                        // 进度弧
+                        drawArc(
+                            color = if (isResting) MaterialTheme.colors.secondary else MaterialTheme.colors.primary,
+                            startAngle = -90f,
+                            sweepAngle = 360f * animatedProgress,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = Size(radius * 2, radius * 2),
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                         )
                     }
 
-                    // 重复
-                    FloatingActionButton(
-                        onClick = {
-                            remainingSeconds = if (isResting) {
-                                actions[currentActionIndex].restTime
-                            } else {
-                                actions[currentActionIndex].defaultTime
-                            }
-                        },
-                        backgroundColor = MaterialTheme.colors.secondary
-                    ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "重复")
-                    }
+                    // 倒计时数字
+                    Text(
+                        text = formatTime(remainingSeconds),
+                        style = MaterialTheme.typography.h1.copy(fontSize = 64.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            remainingSeconds <= 3 -> MaterialTheme.colors.error
+                            isResting -> MaterialTheme.colors.secondary
+                            else -> MaterialTheme.colors.primary
+                        }
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 当前动作名称 (带动画切换)
+                AnimatedContent(
+                    targetState = if (isResting) "休息" else currentAction.name,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(200)) togetherWith
+                                fadeOut(animationSpec = tween(200))
+                    },
+                    label = "actionName"
+                ) { name ->
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.h5,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium,
+                        color = if (isResting) MaterialTheme.colors.secondary else Color.Unspecified
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // 下一个提示
                 val nextInfo = if (isResting) {
                     if (currentActionIndex < actions.size - 1) {
                         "下一个: ${actions[currentActionIndex + 1].name}"
                     } else {
-                        "训练即将完成"
+                        "🎉 训练即将完成"
                     }
                 } else {
                     if (currentAction.restTime > 0) {
-                        "休息: ${currentAction.restTime}秒"
+                        "做完休息 ${currentAction.restTime}秒 →"
                     } else if (currentActionIndex < actions.size - 1) {
                         "下一个: ${actions[currentActionIndex + 1].name}"
                     } else {
-                        "训练即将完成"
+                        "🎉 最后一个动作！加油！"
                     }
                 }
                 Text(
                     text = nextInfo,
-                    style = MaterialTheme.typography.body2,
+                    style = MaterialTheme.typography.body1,
                     color = Color.Gray
                 )
+
+                Spacer(modifier = Modifier.weight(0.5f))
+
+                // 控制按钮
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        // 跳过
+                        Button(
+                            onClick = {
+                                if (isResting) {
+                                    if (currentActionIndex < actions.size - 1) {
+                                        currentActionIndex++
+                                        isResting = false
+                                        remainingSeconds = actions[currentActionIndex].defaultTime
+                                    } else {
+                                        isCompleted = true
+                                        isRunning = false
+                                    }
+                                } else {
+                                    if (currentActionIndex < actions.size - 1) {
+                                        if (actions[currentActionIndex].restTime > 0) {
+                                            isResting = true
+                                            remainingSeconds = actions[currentActionIndex].restTime
+                                        } else {
+                                            currentActionIndex++
+                                            remainingSeconds = actions[currentActionIndex].defaultTime
+                                        }
+                                    } else {
+                                        isCompleted = true
+                                        isRunning = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = MaterialTheme.colors.surface
+                            )
+                        ) {
+                            Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = Color.Gray)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("跳过", color = Color.Gray)
+                        }
+
+                        // 暂停/开始 (大按钮)
+                        FloatingActionButton(
+                            onClick = {
+                                if (!isRunning) {
+                                    playStartSound()
+                                }
+                                isRunning = !isRunning
+                            },
+                            backgroundColor = if (isRunning) MaterialTheme.colors.error else MaterialTheme.colors.primary,
+                            modifier = Modifier.size(72.dp)
+                        ) {
+                            Icon(
+                                if (isRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isRunning) "暂停" else "开始",
+                                tint = Color.White,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+
+                        // 重复
+                        Button(
+                            onClick = {
+                                remainingSeconds = if (isResting) {
+                                    actions[currentActionIndex].restTime
+                                } else {
+                                    actions[currentActionIndex].defaultTime
+                                }
+                            },
+                            modifier = Modifier.height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = MaterialTheme.colors.surface
+                            )
+                        ) {
+                            Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.Gray)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("重来", color = Color.Gray)
+                        }
+                    }
+                }
             }
         }
     }
