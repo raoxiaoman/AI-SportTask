@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import data.SportTaskRepository
 import data.GroupItem
+import ui.EmptyState
+import ui.FullScreenLoading
 import data.ActionItem
 import data.TrainingResult
 import data.formatTime
@@ -35,7 +37,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
 
 // 训练屏幕
 @Composable
@@ -100,35 +101,14 @@ fun TrainingScreen(
         }
     ) { innerPadding ->
         if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            FullScreenLoading(modifier = Modifier.padding(innerPadding))
         } else if (groups.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "暂无训练分组",
-                        style = MaterialTheme.typography.h6,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "请先创建分组和动作",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.Gray
-                    )
-                }
-            }
+            EmptyState(
+                icon = "🏋️",
+                title = "暂无训练分组",
+                subtitle = "请先在「分组」页面创建训练分组和动作",
+                modifier = Modifier.padding(innerPadding)
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -248,27 +228,14 @@ fun TrainingPrepareScreen(
         }
     ) { innerPadding ->
         if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            FullScreenLoading(modifier = Modifier.padding(innerPadding))
         } else if (actions.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "该分组暂无动作",
-                    style = MaterialTheme.typography.body1,
-                    color = Color.Gray
-                )
-            }
+            EmptyState(
+                icon = "💪",
+                title = "该分组暂无动作",
+                subtitle = "请先在分组详情中添加训练动作",
+                modifier = Modifier.padding(innerPadding)
+            )
         } else {
             Column(
                 modifier = Modifier
@@ -481,23 +448,14 @@ fun TrainingExecuteScreen(
         }
     ) { innerPadding ->
         if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            FullScreenLoading(modifier = Modifier.padding(innerPadding))
         } else if (actions.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("该分组暂无动作")
-            }
+            EmptyState(
+                icon = "💪",
+                title = "该分组暂无动作",
+                subtitle = "请先在分组详情中添加训练动作",
+                modifier = Modifier.padding(innerPadding)
+            )
         } else if (isCompleted) {
             // 训练完成页面
             CompletedContent(

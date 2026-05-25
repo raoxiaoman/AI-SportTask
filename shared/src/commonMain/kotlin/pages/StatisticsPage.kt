@@ -14,11 +14,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
+import ui.EmptyState
+import ui.FullScreenLoading
 import data.calculateConsecutiveDays
 import data.formatTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
+
 
 // 统计屏幕
 @Composable
@@ -34,13 +36,11 @@ fun StatisticsScreen() {
     val repository = SportTaskRepository()
 
     LaunchedEffect(Unit) {
-        val today = LocalDate.now()
-        val weekAgo = today.minusDays(7)
-        val monthAgo = today.minusDays(30)
-        val weekStart = weekAgo.toString()
-        val weekEnd = today.toString()
-        val monthStart = monthAgo.toString()
-        val monthEnd = today.toString()
+        val today = todayDateString()
+        val weekStart = daysAgoDateString(6)
+        val weekEnd = today
+        val monthStart = daysAgoDateString(29)
+        val monthEnd = today
 
         // 获取本周数据
         val weeklySummary = withContext(Dispatchers.Default) {
@@ -86,14 +86,7 @@ fun StatisticsScreen() {
         }
     ) { innerPadding ->
         if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            FullScreenLoading(modifier = Modifier.padding(innerPadding))
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -332,7 +325,8 @@ fun WeeklyChartCard(dailyStats: List<DailyStat>) {
                     text = "本周暂无训练数据",
                     style = MaterialTheme.typography.body2,
                     color = Color.Gray,
-                    modifier = Modifier.padding(vertical = 20.dp)
+                    modifier = Modifier.padding(vertical = 20.dp).fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             } else {
                 // 简易柱状图
@@ -344,20 +338,18 @@ fun WeeklyChartCard(dailyStats: List<DailyStat>) {
                     verticalAlignment = Alignment.Bottom
                 ) {
                     val maxCount = dailyStats.maxOfOrNull { it.count } ?: 1
-                    val today = LocalDate.now()
 
                     val dayLabels = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
 
                     // 生成完整的7天数据
                     val fullWeek = (0..6).map { offset ->
-                        val date = today.minusDays((6 - offset).toLong())
-                        val dateStr = date.toString()
+                        val dateStr = daysAgoDateString(6 - offset)
                         dailyStats.find { it.date == dateStr }
                             ?: DailyStat(date = dateStr, count = 0, duration = 0)
                     }
 
                     fullWeek.forEach { stat ->
-                        val dayOfWeek = java.time.LocalDate.parse(stat.date).dayOfWeek.value
+                        val dayOfWeek = dayOfWeekFromDate(stat.date)
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.weight(1f)

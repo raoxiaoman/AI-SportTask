@@ -57,26 +57,26 @@ private object PlatformSound {
     }
 }
 
-fun playStartSound() {
+actual fun playStartSound() {
     PlatformSound.playTone(ToneGenerator.TONE_PROP_BEEP, 200)
 }
 
-fun playEndSound() {
+actual fun playEndSound() {
     PlatformSound.playTone(ToneGenerator.TONE_PROP_ACK, 300)
 }
 
-fun playCountdownSound() {
+actual fun playCountdownSound() {
     PlatformSound.playTone(ToneGenerator.TONE_PROP_BEEP2, 100)
 }
 
-fun vibrateShort() {
+actual fun vibrateShort() {
     PlatformSound.vibrate(100)
 }
 
-fun vibrateMedium() {
+actual fun vibrateMedium() {
     PlatformSound.vibrate(300)
 }
 
-fun vibrateLong() {
+actual fun vibrateLong() {
     PlatformSound.vibrate(500)
 }

@@ -19,11 +19,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
 import data.formatTime
+import ui.EmptyState
+import ui.FullScreenLoading
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+
 
 // 打卡屏幕
 @Composable
@@ -54,10 +55,10 @@ fun CheckinScreen() {
     fun loadData() {
         scope.launch {
             isLoading = true
-            val today = LocalDate.now()
-            val monthAgo = today.minusDays(90) // 扩展到90天
+            val today = todayDateString()
+            val monthAgo = daysAgoDateString(90) // 扩展到90天
             val dbCheckins = withContext(Dispatchers.Default) {
-                repository.getCheckinsByDateRange(monthAgo.toString(), today.toString())
+                repository.getCheckinsByDateRange(monthAgo, today)
             }
 
             val groupList = withContext(Dispatchers.Default) {
@@ -140,14 +141,13 @@ fun CheckinScreen() {
 
             // 内容区域
             if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                FullScreenLoading()
             } else if (filteredCheckins.isEmpty()) {
-                EmptyState()
+                EmptyState(
+                    icon = "📝",
+                    title = "暂无打卡记录",
+                    subtitle = "开始训练来完成你的第一次打卡吧！"
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier
@@ -382,11 +382,14 @@ fun DateSection(
     onEditClick: (CheckinItemWithGroup) -> Unit,
     onDeleteClick: (CheckinItemWithGroup) -> Unit
 ) {
-    val dateFormatter = DateTimeFormatter.ofPattern("yyyy年M月d日")
-    val dayFormatter = DateTimeFormatter.ofPattern("EEEE")
-    val parsedDate = java.time.LocalDate.parse(date)
-    val formattedDate = parsedDate.format(dateFormatter)
-    val dayOfWeek = parsedDate.format(dayFormatter)
+    val parts = date.split("-")
+    val formattedDate = if (parts.size == 3) {
+        "${parts[0]}年${parts[1].toInt()}月${parts[2].toInt()}日"
+    } else {
+        date
+    }
+    val dayLabels = listOf("", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
+    val dayOfWeek = dayLabels.getOrElse(dayOfWeekFromDate(date)) { "" }
 
     var expanded by remember { mutableStateOf(true) }
 
@@ -678,33 +681,7 @@ fun FilterBottomSheet(
     }
 }
 
-@Composable
-fun EmptyState() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "📝",
-                style = MaterialTheme.typography.h1
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "暂无打卡记录",
-                style = MaterialTheme.typography.body1,
-                color = Color.Gray
-            )
-            Text(
-                text = "开始训练来完成你的第一次打卡吧！",
-                style = MaterialTheme.typography.body2,
-                color = Color.Gray
-            )
-        }
-    }
-}
+
 
 data class CheckinItemWithGroup(
     val id: Long,

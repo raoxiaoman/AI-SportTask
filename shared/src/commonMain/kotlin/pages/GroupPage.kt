@@ -2,7 +2,6 @@ package pages
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
@@ -15,7 +14,6 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -30,6 +28,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+import ui.EmptyState
+import ui.FullScreenLoading
 
 // 分组屏幕
 @Composable
@@ -82,9 +82,16 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
     // 分组列表状态
     var groups by remember { mutableStateOf<List<GroupItem>>(emptyList()) }
 
+    // 加载状态
+    var isLoading by remember { mutableStateOf(true) }
+
+    suspend fun loadGroupsData() {
+        loadGroups(repository) { groups = it; isLoading = false }
+    }
+
     // 初始加载分组
     LaunchedEffect(true) {
-        loadGroups(repository) { groups = it }
+        loadGroupsData()
     }
 
     Scaffold(
@@ -97,26 +104,40 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
             }
         }
     ) { innerPadding ->
-        // 分组列表
         Column(modifier = Modifier
             .padding(innerPadding)
             .padding(8.dp)) {
-            // 列表
-            LazyColumn {
-                items(groups) { group ->
-                    GroupCard(
-                        group = group,
-                        onClick = { onGroupClick(group) },
-                        onEditClick = {
-                            currentEditingGroup = group
-                            editGroupName = group.name
-                            showEditDialog = true
-                        },
-                        onDeleteClick = {
-                            currentDeletingGroup = group
-                            showDeleteDialog = true
-                        }
+            when {
+                isLoading -> {
+                    FullScreenLoading()
+                }
+                groups.isEmpty() -> {
+                    EmptyState(
+                        icon = "📂",
+                        title = "还没有训练分组",
+                        subtitle = "创建一个分组来管理你的训练动作",
+                        actionText = "新建分组",
+                        onAction = { showAddDialog = true }
                     )
+                }
+                else -> {
+                    LazyColumn {
+                        items(groups) { group ->
+                            GroupCard(
+                                group = group,
+                                onClick = { onGroupClick(group) },
+                                onEditClick = {
+                                    currentEditingGroup = group
+                                    editGroupName = group.name
+                                    showEditDialog = true
+                                },
+                                onDeleteClick = {
+                                    currentDeletingGroup = group
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -404,17 +425,18 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
             }
 
             if (isLoading) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                FullScreenLoading()
             } else if (actions.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("暂无动作", style = MaterialTheme.typography.h6, color = Color.Gray)
-                        Spacer(Modifier.height(8.dp))
-                        Text("点击 + 添加第一个动作", style = MaterialTheme.typography.body2, color = Color.Gray)
+                EmptyState(
+                    icon = "💪",
+                    title = "暂无动作",
+                    subtitle = "点击右下角 + 添加第一个训练动作",
+                    actionText = "添加动作",
+                    onAction = {
+                        editingAction = null
+                        showEditScreen = true
                     }
-                }
+                )
             } else {
                 Column(
                     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
