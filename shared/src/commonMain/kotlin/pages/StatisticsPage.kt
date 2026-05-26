@@ -33,7 +33,8 @@ fun StatisticsScreen() {
     var consecutiveDays by remember { mutableStateOf(0) }
     var totalTrainingCount by remember { mutableStateOf(0) }
     var dailyStats by remember { mutableStateOf<List<DailyStat>>(emptyList()) }
-    val repository = SportTaskRepository()
+    var groupCount by remember { mutableStateOf(0) }
+    val repository = SportTaskRepository
 
     LaunchedEffect(Unit) {
         val today = todayDateString()
@@ -75,6 +76,7 @@ fun StatisticsScreen() {
         // 总训练次数
         totalTrainingCount = allCheckins.size
 
+        groupCount = repository.getGroups().size
         isLoading = false
     }
 
@@ -124,7 +126,7 @@ fun StatisticsScreen() {
 
                 item {
                     // 总统计
-                    TotalStatsCard(totalTrainingCount = totalTrainingCount)
+                    TotalStatsCard(totalTrainingCount = totalTrainingCount, totalGroups = groupCount)
                 }
 
                 item {
@@ -381,7 +383,7 @@ fun WeeklyChartCard(dailyStats: List<DailyStat>) {
 }
 
 @Composable
-fun TotalStatsCard(totalTrainingCount: Int) {
+fun TotalStatsCard(totalTrainingCount: Int, totalGroups: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = 4.dp,
@@ -406,13 +408,8 @@ fun TotalStatsCard(totalTrainingCount: Int) {
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                val groups = remember { mutableStateOf(0) }
-                LaunchedEffect(Unit) {
-                    val repo = SportTaskRepository()
-                    groups.value = repo.getGroups().size
-                }
                 Text(
-                    text = "${groups.value}",
+                    text = "$totalGroups",
                     style = MaterialTheme.typography.h5,
                     fontWeight = FontWeight.Bold
                 )

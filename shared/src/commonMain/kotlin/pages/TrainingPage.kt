@@ -43,7 +43,7 @@ import kotlinx.coroutines.withContext
 fun TrainingScreen(
     onTrainingComplete: (() -> Unit)? = null
 ) {
-    val repository = SportTaskRepository()
+    val repository = SportTaskRepository
     var groups by remember { mutableStateOf<List<GroupItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedGroup by remember { mutableStateOf<GroupItem?>(null) }
@@ -174,7 +174,7 @@ fun TrainingPrepareScreen(
     onBackClick: () -> Unit,
     onStartClick: () -> Unit
 ) {
-    val repository = SportTaskRepository()
+    val repository = SportTaskRepository
     var actions by remember { mutableStateOf<List<ActionItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var totalDuration by remember { mutableStateOf(0) }
@@ -338,7 +338,7 @@ fun TrainingExecuteScreen(
     onComplete: (TrainingResult) -> Unit,
     onTrainingComplete: (() -> Unit)? = null
 ) {
-    val repository = SportTaskRepository()
+    val repository = SportTaskRepository
     var actions by remember { mutableStateOf<List<ActionItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 

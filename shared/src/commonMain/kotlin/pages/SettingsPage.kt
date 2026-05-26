@@ -18,9 +18,10 @@ import kotlinx.coroutines.withContext
 // 设置屏幕
 @Composable
 fun SettingsScreen(
+    isDarkMode: Boolean = false,
     onThemeChange: ((Boolean) -> Unit)? = null
 ) {
-    val repository = SportTaskRepository()
+    val repository = SportTaskRepository
     val scope = rememberCoroutineScope()
 
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -50,8 +51,12 @@ fun SettingsScreen(
     var soundEnabled by remember { mutableStateOf(true) }
     var vibrationEnabled by remember { mutableStateOf(false) }
 
-    // 深色模式状态
-    var isDarkMode by remember { mutableStateOf(false) }
+    // 深色模式状态（由父组件管理）
+    var localDarkMode by remember { mutableStateOf(false) }
+    // 当父组件更新时同步
+    LaunchedEffect(isDarkMode) {
+        localDarkMode = isDarkMode
+    }
 
     // 加载统计数据
     fun loadStats() {
@@ -110,10 +115,10 @@ fun SettingsScreen(
                     SettingsSwitchItem(
                         icon = "🌙",
                         title = "深色模式",
-                        subtitle = if (isDarkMode) "已开启" else "未开启",
-                        checked = isDarkMode,
+                        subtitle = if (localDarkMode) "已开启" else "未开启",
+                        checked = localDarkMode,
                         onCheckedChange = { enabled ->
-                            isDarkMode = enabled
+                            localDarkMode = enabled
                             onThemeChange?.invoke(enabled)
                         }
                     )

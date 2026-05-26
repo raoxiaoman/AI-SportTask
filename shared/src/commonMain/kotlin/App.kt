@@ -19,7 +19,7 @@ fun App() {
     var showAchievements by remember { mutableStateOf(false) }
     var newAchievements by remember { mutableStateOf<List<Achievement>>(emptyList()) }
     val scope = rememberCoroutineScope()
-    val repository = remember { SportTaskRepository() }
+    val repository = SportTaskRepository
 
     val colors = if (isDarkMode) {
         darkColors(
@@ -88,7 +88,7 @@ fun App() {
                     1 -> GroupScreen()
                     2 -> CheckinScreen()
                     3 -> StatisticsScreen()
-                    4 -> SettingsScreen(onThemeChange = { isDarkMode = it })
+                    4 -> SettingsScreen(isDarkMode = isDarkMode, onThemeChange = { isDarkMode = it })
                     else -> TrainingScreen()
                 }
             }

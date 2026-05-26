@@ -5,8 +5,9 @@ import db.DatabaseProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class SportTaskRepository(private val db: SportTaskDatabase = DatabaseProvider.db) {
-    private val q = db.sporttaskQueries
+object SportTaskRepository {
+    private val db: SportTaskDatabase by lazy { DatabaseProvider.db }
+    private val q by lazy { db.sporttaskQueries }
 
     suspend fun getGroups() = withContext(Dispatchers.Default) {
         q.getAllActionGroups().executeAsList()

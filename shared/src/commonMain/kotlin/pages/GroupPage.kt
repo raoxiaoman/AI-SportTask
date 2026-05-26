@@ -76,7 +76,7 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
     var currentDeletingGroup by remember { mutableStateOf<GroupItem?>(null) }
 
     // 从数据库获取分组
-    val repository = SportTaskRepository()
+    val repository = SportTaskRepository
     val scope = rememberCoroutineScope()
 
     // 分组列表状态
@@ -290,7 +290,7 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
 // 分组详情页面 — 支持拖拽排序
 @Composable
 fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
-    val repository = SportTaskRepository()
+    val repository = SportTaskRepository
     val scope = rememberCoroutineScope()
 
     var actions by remember { mutableStateOf<List<ActionItem>>(emptyList()) }
@@ -695,7 +695,7 @@ fun ActionEditScreen(
     var timeError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
-    val repository = SportTaskRepository()
+    val repository = SportTaskRepository
 
     // 如果是编辑模式，获取下一个排序索引
     LaunchedEffect(groupId) {

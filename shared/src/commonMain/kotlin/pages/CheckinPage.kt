@@ -48,7 +48,7 @@ fun CheckinScreen() {
     var deletingCheckin by remember { mutableStateOf<CheckinItemWithGroup?>(null) }
     var showDeleteAllDialog by remember { mutableStateOf(false) }
 
-    val repository = SportTaskRepository()
+    val repository = SportTaskRepository
     val scope = rememberCoroutineScope()
 
     // 加载数据
