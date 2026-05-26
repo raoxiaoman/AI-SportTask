@@ -4,6 +4,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.unit.dp
+import cloud.AuthService
 import data.Achievement
 import data.AchievementManager
 import data.SportTaskRepository
@@ -14,7 +15,31 @@ import ui.AchievementDialog
 @Composable
 fun App() {
     var isDarkMode by remember { mutableStateOf(false) }
+    val authState by AuthService.authState.collectAsState()
 
+    // 未登录 → 显示登录页
+    if (authState !is cloud.AuthService.AuthState.SignedIn) {
+        LoginScreen(
+            onLoginSuccess = { /* 自动导航到主界面 */ }
+        )
+        return
+    }
+
+    // 已登录 → 主界面
+    MainApp(
+        isDarkMode = isDarkMode,
+        onThemeChange = { isDarkMode = it }
+    )
+}
+
+/**
+ * 主应用界面（已登录状态）
+ */
+@Composable
+fun MainApp(
+    isDarkMode: Boolean,
+    onThemeChange: (Boolean) -> Unit
+) {
     // 成就系统状态
     var showAchievements by remember { mutableStateOf(false) }
     var newAchievements by remember { mutableStateOf<List<Achievement>>(emptyList()) }
@@ -75,7 +100,6 @@ fun App() {
                 when (selectedIndex) {
                     0 -> TrainingScreen(
                         onTrainingComplete = {
-                            // 训练完成，检查成就
                             scope.launch {
                                 val achs = AchievementManager.checkNewAchievements(repository)
                                 if (achs.isNotEmpty()) {
@@ -88,7 +112,10 @@ fun App() {
                     1 -> GroupScreen()
                     2 -> CheckinScreen()
                     3 -> StatisticsScreen()
-                    4 -> SettingsScreen(isDarkMode = isDarkMode, onThemeChange = { isDarkMode = it })
+                    4 -> SettingsScreen(
+                        isDarkMode = isDarkMode,
+                        onThemeChange = onThemeChange
+                    )
                     else -> TrainingScreen()
                 }
             }

@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import cloud.AuthService
+import cloud.SyncManager
 import data.SportTaskRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -206,6 +208,60 @@ fun SettingsScreen(
                         title = "清除数据",
                         subtitle = "删除所有训练记录和分组",
                         onClick = { showClearDataDialog = true },
+                        isDestructive = true
+                    )
+                }
+            }
+
+            // 云同步部分
+            item {
+                SettingsSection(title = "云同步") {
+                    val syncState = SyncManager.state
+                    val syncSubtitle = when (syncState) {
+                        is cloud.SyncManager.SyncState.Idle -> {
+                            if (SyncManager.lastSyncSuccess) "上次同步成功" else "未同步"
+                        }
+                        is cloud.SyncManager.SyncState.Syncing -> "同步中..."
+                        is cloud.SyncManager.SyncState.Success -> "同步成功"
+                        is cloud.SyncManager.SyncState.Error -> "同步失败: ${syncState.message}"
+                    }
+                    val syncIcon = when (syncState) {
+                        is cloud.SyncManager.SyncState.Syncing -> "🔄"
+                        is cloud.SyncManager.SyncState.Success -> "✅"
+                        is cloud.SyncManager.SyncState.Error -> "❌"
+                        else -> if (SyncManager.lastSyncSuccess) "☁️" else "☁️"
+                    }
+                    SettingsItem(
+                        icon = syncIcon,
+                        title = "同步状态",
+                        subtitle = syncSubtitle,
+                        onClick = {
+                            scope.launch {
+                                SyncManager.sync()
+                            }
+                        }
+                    )
+                    val authState = AuthService.authState.collectAsState().value
+                    val userEmail = if (authState is cloud.AuthService.AuthState.SignedIn) {
+                        authState.email
+                    } else {
+                        "未登录"
+                    }
+                    SettingsItem(
+                        icon = "👤",
+                        title = "账号",
+                        subtitle = userEmail,
+                        onClick = { }
+                    )
+                    SettingsItem(
+                        icon = "🚪",
+                        title = "退出登录",
+                        subtitle = "退出后数据保留在本地",
+                        onClick = {
+                            scope.launch {
+                                AuthService.signOut()
+                            }
+                        },
                         isDestructive = true
                     )
                 }

@@ -1,5 +1,6 @@
 plugins {
     kotlin("multiplatform")
+    kotlin("plugin.serialization")
     id("com.android.library")
     id("org.jetbrains.compose")
     id("app.cash.sqldelight")
@@ -29,6 +30,13 @@ kotlin {
                 implementation(compose.components.resources)
                 implementation("app.cash.sqldelight:runtime:2.0.2")
                 implementation("app.cash.sqldelight:coroutines-extensions:2.0.2")
+                // Supabase (云同步)
+                implementation(platform("io.github.jan-tennert.supabase:bom:2.6.1"))
+                implementation("io.github.jan-tennert.supabase:postgrest-kt")
+                implementation("io.github.jan-tennert.supabase:auth-kt")
+                implementation("io.github.jan-tennert.supabase:realtime-kt")
+                implementation("io.ktor:ktor-client-core:2.3.12")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
             }
         }
         val commonTest by getting {
@@ -43,6 +51,7 @@ kotlin {
                 api("androidx.appcompat:appcompat:1.7.0")
                 api("androidx.core:core-ktx:1.13.1")
                 implementation("app.cash.sqldelight:android-driver:2.0.2")
+                implementation("io.ktor:ktor-client-okhttp:2.3.12")
             }
         }
         val androidUnitTest by getting {
@@ -60,6 +69,9 @@ kotlin {
             iosX64Main.dependsOn(this)
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)
+            dependencies {
+                implementation("io.ktor:ktor-client-darwin:2.3.12")
+            }
         }
     }
 }
