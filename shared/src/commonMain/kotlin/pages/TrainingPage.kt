@@ -70,10 +70,23 @@ fun TrainingScreen(
                 selectedGroup = null
             },
             onComplete = { result ->
+                // 🔴 Fix: 保存打卡记录到数据库
+                scope.launch {
+                    withContext(Dispatchers.Default) {
+                        val today = todayDateString()
+                        repository.addCheckin(
+                            date = today,
+                            groupId = result.groupId,
+                            actionId = null,
+                            duration = result.duration.toLong(),
+                            isCompleted = if (result.completed) 1L else 0L
+                        )
+                    }
+                    onTrainingComplete?.invoke()
+                }
                 showExecuteScreen = false
                 selectedGroup = null
-            },
-            onTrainingComplete = onTrainingComplete
+            }
         )
         return@TrainingScreen
     }
@@ -193,7 +206,10 @@ fun TrainingPrepareScreen(
                 orderIndex = action.order_index.toInt()
             )
         }
-        totalDuration = actions.sumOf { it.defaultTime + it.restTime }
+        // 总时长：每个动作的时长 + 除最后一个动作外的休息时长
+        totalDuration = if (actions.isEmpty()) 0 else {
+            actions.sumOf { it.defaultTime + it.restTime } - actions.last().restTime
+        }
         isLoading = false
     }
 
@@ -469,7 +485,7 @@ fun TrainingExecuteScreen(
                         completed = true
                     )
                     onComplete(result)
-                    onTrainingComplete?.invoke()
+                    // onTrainingComplete 由 onComplete 中调用
                 },
                 onSkip = {
                     val result = TrainingResult(
@@ -478,7 +494,7 @@ fun TrainingExecuteScreen(
                         completed = false
                     )
                     onComplete(result)
-                    onTrainingComplete?.invoke()
+                    // onTrainingComplete 由 onComplete 中调用
                 }
             )
         } else {
@@ -700,6 +716,11 @@ fun TrainingExecuteScreen(
                                 } else {
                                     actions[currentActionIndex].defaultTime
                                 }
+                                // 🔧 确保计时器继续运行
+                                if (!isRunning) {
+                                    playStartSound()
+                                }
+                                isRunning = true
                             },
                             modifier = Modifier.height(48.dp),
                             colors = ButtonDefaults.buttonColors(

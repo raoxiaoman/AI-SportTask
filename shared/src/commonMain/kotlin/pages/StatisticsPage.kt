@@ -66,12 +66,12 @@ fun StatisticsScreen() {
             )
         }
 
-        // 计算连续打卡天数
+        // 计算当前连续打卡天数（从今天往前推）
         val allCheckins = withContext(Dispatchers.Default) {
-            repository.getCheckinsByDateRange("2024-01-01", today.toString())
+            repository.getCheckinsByDateRange("2024-01-01", today)
         }
         val uniqueDates = allCheckins.map { it.date }.distinct().sorted()
-        consecutiveDays = calculateConsecutiveDays(uniqueDates)
+        consecutiveDays = calculateCurrentStreak(uniqueDates, today)
 
         // 总训练次数
         totalTrainingCount = allCheckins.size
@@ -224,8 +224,10 @@ fun WeeklyStatsCard(weeklyCount: Int, weeklyDuration: Int) {
                     )
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    val avgSeconds = if (weeklyCount > 0) weeklyDuration / weeklyCount else 0
+                    val avgMinutes = avgSeconds / 60
                     Text(
-                        text = "${if (weeklyCount > 0) weeklyDuration / weeklyCount else 0}",
+                        text = "$avgMinutes",
                         style = MaterialTheme.typography.h4,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colors.primary
@@ -428,3 +430,54 @@ data class DailyStat(
     val count: Int,
     val duration: Int
 )
+
+/**
+ * 计算从今天开始的当前连续打卡天数
+ * 与 calculateConsecutiveDays（全局最大连续）不同，
+ * 此函数只关注从今天起往前的连续天数。
+ */
+internal fun calculateCurrentStreak(sortedDates: List<String>, today: String): Int {
+    if (sortedDates.isEmpty() || sortedDates.last() != today) return 0
+
+    var count = 0
+    var expected = today
+    for (dateStr in sortedDates.reversed()) {
+        if (dateStr == expected) {
+            count++
+            // 往前推一天
+            val parts = expected.split("-")
+            val y = parts[0].toInt()
+            val m = parts[1].toInt()
+            val d = parts[2].toInt()
+            val dayCount = data.absoluteDayCount(y, m, d) - 1
+            expected = fromDayCount(dayCount)
+        } else {
+            break
+        }
+    }
+    return count
+}
+
+private fun fromDayCount(totalDays: Int): String {
+    val base = data.absoluteDayCount(2025, 1, 1)
+    var remaining = totalDays - base
+    var y = 2025
+    val monthDays = intArrayOf(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+    while (true) {
+        val daysInYear = if ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0) 366 else 365
+        if (remaining >= daysInYear) {
+            remaining -= daysInYear
+            y++
+        } else break
+    }
+    var m = 1
+    while (m <= 12) {
+        val dim = monthDays[m - 1] + if (m == 2 && ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0)) 1 else 0
+        if (remaining >= dim) {
+            remaining -= dim
+            m++
+        } else break
+    }
+    val d = remaining + 1
+    return "$y-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}"
+}
