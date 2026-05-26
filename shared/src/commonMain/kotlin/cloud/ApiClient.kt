@@ -15,12 +15,10 @@ import kotlinx.serialization.json.*
 /**
  * 后端 API 客户端 — 连接自托管后端
  *
- * 后端地址: VPS 23.94.233.92:3456
- * 协议: HTTP (自托管，内部使用)
+ * 后端地址见 ServerConfig.API_BASE_URL
  */
 object ApiClient {
-    // 后端地址
-    const val BASE_URL = "http://23.94.233.92:3456"
+    const val BASE_URL = ServerConfig.API_BASE_URL
 
     private val json = Json {
         ignoreUnknownKeys = true
