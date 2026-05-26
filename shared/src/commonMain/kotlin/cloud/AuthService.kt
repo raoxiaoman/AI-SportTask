@@ -6,78 +6,76 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * 认证服务 — 管理登录状态、Token 持久化
+ * 认证服务 — 管理登录状态
  *
- * v0.3.0：本地模拟版，Supabase 集成后替换为真实的 Auth API。
- * 当前实现纯本地状态，不依赖网络，方便并行开发 UI。
+ * 连接自托管后端 (VPS 23.94.233.92:3456)。
+ * 支持注册、登录、登出，成功后保存 token 到 ApiClient。
  */
 object AuthService {
 
-    /** 登录状态 */
     sealed class AuthState {
-        /** 未登录 */
         data object SignedOut : AuthState()
-
-        /** 登录中 */
         data object Loading : AuthState()
-
-        /** 已登录 */
         data class SignedIn(val email: String, val userId: String) : AuthState()
-
-        /** 错误 */
         data class Error(val message: String) : AuthState()
     }
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
-    /** 是否已登录 */
     val isSignedIn: Boolean get() = _authState.value is AuthState.SignedIn
 
     /**
-     * 注册新用户
-     * TODO: v0.3.1 接入 supabase-kt Auth
+     * 注册新用户 → 调用后端 API
      */
     suspend fun signUp(email: String, password: String): LoginResult {
         _authState.value = AuthState.Loading
 
-        // 模拟网络延迟
-        kotlinx.coroutines.delay(800)
-
-        return if (email.isBlank() || password.isBlank()) {
-            _authState.value = AuthState.Error("邮箱和密码不能为空")
-            LoginResult(false, "邮箱和密码不能为空")
-        } else if (password.length < 6) {
-            _authState.value = AuthState.Error("密码长度至少 6 位")
-            LoginResult(false, "密码长度至少 6 位")
-        } else {
-            _authState.value = AuthState.SignedIn(
-                email = email,
-                userId = "local_${email.hashCode()}"
-            )
-            LoginResult(true, null)
+        return try {
+            val response = ApiClient.signup(email, password)
+            if (response.success && response.token != null) {
+                ApiClient.authToken = response.token
+                _authState.value = AuthState.SignedIn(
+                    email = email,
+                    userId = response.user?.id?.toString() ?: "unknown"
+                )
+                LoginResult(true, null)
+            } else {
+                val err = response.message ?: "注册失败"
+                _authState.value = AuthState.Error(err)
+                LoginResult(false, err)
+            }
+        } catch (e: Exception) {
+            val err = e.message ?: "网络错误，请检查连接"
+            _authState.value = AuthState.Error(err)
+            LoginResult(false, err)
         }
     }
 
     /**
-     * 登录
-     * TODO: v0.3.1 接入 supabase-kt Auth
+     * 登录 → 调用后端 API
      */
     suspend fun signIn(email: String, password: String): LoginResult {
         _authState.value = AuthState.Loading
 
-        // 模拟网络延迟
-        kotlinx.coroutines.delay(600)
-
-        return if (email.isBlank() || password.isBlank()) {
-            _authState.value = AuthState.Error("邮箱和密码不能为空")
-            LoginResult(false, "邮箱和密码不能为空")
-        } else {
-            _authState.value = AuthState.SignedIn(
-                email = email,
-                userId = "local_${email.hashCode()}"
-            )
-            LoginResult(true, null)
+        return try {
+            val response = ApiClient.signin(email, password)
+            if (response.success && response.token != null) {
+                ApiClient.authToken = response.token
+                _authState.value = AuthState.SignedIn(
+                    email = email,
+                    userId = response.user?.id?.toString() ?: "unknown"
+                )
+                LoginResult(true, null)
+            } else {
+                val err = response.message ?: "登录失败"
+                _authState.value = AuthState.Error(err)
+                LoginResult(false, err)
+            }
+        } catch (e: Exception) {
+            val err = e.message ?: "网络错误，请检查连接"
+            _authState.value = AuthState.Error(err)
+            LoginResult(false, err)
         }
     }
 
@@ -86,7 +84,13 @@ object AuthService {
      */
     suspend fun signOut() {
         _authState.value = AuthState.Loading
-        kotlinx.coroutines.delay(300)
+        ApiClient.authToken = null
         _authState.value = AuthState.SignedOut
+    }
+
+    /** 当前登录用户的邮箱 */
+    val currentEmail: String? get() {
+        val state = _authState.value
+        return if (state is AuthState.SignedIn) state.email else null
     }
 }
