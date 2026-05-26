@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * 认证服务 — 管理登录状态
  *
- * 连接自托管后端 (VPS 23.94.233.92:3456)。
+ * 连接自托管后端（地址见 ServerConfig.kt）。
  * 支持注册、登录、登出，成功后保存 token 到 ApiClient。
  */
 object AuthService {
