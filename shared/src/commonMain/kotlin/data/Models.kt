@@ -57,11 +57,11 @@ data class ImportResult(
 fun formatTime(seconds: Int): String {
     val mins = seconds / 60
     val secs = seconds % 60
-    return "%d:%02d".format(mins, secs)
+    return if (secs < 10) "$mins:0$secs" else "$mins:$secs"
 }
 
 /**
- * 计算连续打卡天数
+ * 计算最大连续打卡天数（基于已排序的日期列表）
  */
 fun calculateConsecutiveDays(dates: List<String>): Int {
     if (dates.isEmpty()) return 0
@@ -71,10 +71,7 @@ fun calculateConsecutiveDays(dates: List<String>): Int {
     var currentConsecutive = 1
 
     for (i in 1 until sortedDates.size) {
-        val prev = java.time.LocalDate.parse(sortedDates[i - 1])
-        val curr = java.time.LocalDate.parse(sortedDates[i])
-
-        if (curr == prev.plusDays(1)) {
+        if (areConsecutiveDays(sortedDates[i - 1], sortedDates[i])) {
             currentConsecutive++
             maxConsecutive = maxOf(maxConsecutive, currentConsecutive)
         } else {
@@ -82,4 +79,29 @@ fun calculateConsecutiveDays(dates: List<String>): Int {
         }
     }
     return maxConsecutive
+}
+
+/**
+ * 判断两个 YYYY-MM-DD 日期是否相邻
+ */
+fun areConsecutiveDays(date1: String, date2: String): Boolean {
+    return daysBetweenStrings(date1, date2) == 1
+}
+
+internal fun daysBetweenStrings(from: String, to: String): Int {
+    val f = from.split("-").map { it.toIntOrNull() ?: 0 }
+    val t = to.split("-").map { it.toIntOrNull() ?: 0 }
+    if (f.size < 3 || t.size < 3) return Int.MAX_VALUE
+    return absoluteDayCount(t[0], t[1], t[2]) - absoluteDayCount(f[0], f[1], f[2])
+}
+
+internal fun absoluteDayCount(y: Int, m: Int, d: Int): Int {
+    val monthDays = intArrayOf(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+    val y0 = y - 1
+    val leapDays = y0 / 4 - y0 / 100 + y0 / 400
+    var days = y0 * 365 + leapDays
+    for (i in 0 until m - 1) days += monthDays[i]
+    if (m > 2 && ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0)) days++
+    days += d
+    return days
 }

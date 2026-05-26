@@ -3,12 +3,23 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.unit.dp
+import data.Achievement
+import data.AchievementManager
+import data.SportTaskRepository
+import kotlinx.coroutines.launch
 import pages.*
+import ui.AchievementDialog
 
 @Composable
 fun App() {
-    // 深色模式状态管理
     var isDarkMode by remember { mutableStateOf(false) }
+
+    // 成就系统状态
+    var showAchievements by remember { mutableStateOf(false) }
+    var newAchievements by remember { mutableStateOf<List<Achievement>>(emptyList()) }
+    val scope = rememberCoroutineScope()
+    val repository = remember { SportTaskRepository() }
 
     val colors = if (isDarkMode) {
         darkColors(
@@ -62,7 +73,18 @@ fun App() {
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
                 when (selectedIndex) {
-                    0 -> TrainingScreen(onTrainingComplete = { /* 成就提示 */ })
+                    0 -> TrainingScreen(
+                        onTrainingComplete = {
+                            // 训练完成，检查成就
+                            scope.launch {
+                                val achs = AchievementManager.checkNewAchievements(repository)
+                                if (achs.isNotEmpty()) {
+                                    newAchievements = achs
+                                    showAchievements = true
+                                }
+                            }
+                        }
+                    )
                     1 -> GroupScreen()
                     2 -> CheckinScreen()
                     3 -> StatisticsScreen()
@@ -70,6 +92,17 @@ fun App() {
                     else -> TrainingScreen()
                 }
             }
+        }
+
+        // 成就解锁弹窗
+        if (showAchievements && newAchievements.isNotEmpty()) {
+            AchievementDialog(
+                achievements = newAchievements,
+                onDismiss = {
+                    showAchievements = false
+                    newAchievements = emptyList()
+                }
+            )
         }
     }
 }
