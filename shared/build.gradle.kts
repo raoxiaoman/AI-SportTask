@@ -6,34 +6,7 @@ plugins {
     id("app.cash.sqldelight")
 }
 
-// ============================================================
-// 服务器地址自动生成 — 不提交实际 IP 到 Git
-// ============================================================
-// 在 project root 的 local.properties（gitignored）中设置:
-//     api.baseUrl=http://your-vps-ip:3456
-// 不设置则默认 http://localhost:3456
-// ============================================================
-val serverConfigDir = layout.buildDirectory.dir("generated/serverConfig/commonMain")
-val serverConfigFile = serverConfigDir.map { it.file("cloud/ServerConfig.kt").asFile }
-
-val localPropFile = rootProject.file("local.properties")
-val apiBaseUrl = if (localPropFile.exists()) {
-    localPropFile.readLines()
-        .firstOrNull { it.startsWith("api.baseUrl=") }
-        ?.substringAfter("=")
-        ?.trim()
-        ?: "http://localhost:3456"
-} else {
-    "http://localhost:3456"
-}
-
-// 注册生成源目录
 kotlin {
-    sourceSets {
-        commonMain {
-            kotlin.srcDir(serverConfigDir)
-        }
-    }
     androidTarget("android")
 
     listOf(
@@ -57,10 +30,11 @@ kotlin {
                 implementation(compose.components.resources)
                 implementation("app.cash.sqldelight:runtime:2.0.2")
                 implementation("app.cash.sqldelight:coroutines-extensions:2.0.2")
-
+                // Ktor HTTP client
                 implementation("io.ktor:ktor-client-core:2.3.12")
                 implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
+                // Kotlinx Serialization
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
             }
         }
@@ -99,41 +73,6 @@ kotlin {
             }
         }
     }
-}
-
-// 生成 ServerConfig.kt（编译前执行）
-tasks.register("generateServerConfig") {
-    doLast {
-        val file = serverConfigFile.get()
-        file.parentFile.mkdirs()
-        file.writeText(
-            """
-package cloud
-
-/**
- * 服务器配置 — 由 Gradle 自动生成
- * 设置: local.properties → api.baseUrl
- * 默认: http://localhost:3456
- */
-object ServerConfig {
-    const val API_BASE_URL = "$apiBaseUrl"
-}
-""".trimStart()
-        )
-    }
-}
-
-// 所有编译任务依赖生成器
-tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
-    dependsOn("generateServerConfig")
-}
-
-tasks.named("generateServerConfig") {
-    // 当 local.properties 变更时重新执行
-    if (localPropFile.exists()) {
-        inputs.file(localPropFile)
-    }
-    outputs.file(serverConfigFile)
 }
 
 android {

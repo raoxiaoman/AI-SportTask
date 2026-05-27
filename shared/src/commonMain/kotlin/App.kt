@@ -4,47 +4,75 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.unit.dp
-import cloud.AuthService
 import data.Achievement
 import data.AchievementManager
 import data.SportTaskRepository
+import data.remote.AuthService
 import kotlinx.coroutines.launch
 import pages.*
 import ui.AchievementDialog
 
 @Composable
 fun App() {
-    var isDarkMode by remember { mutableStateOf(false) }
-    val authState by AuthService.authState.collectAsState()
+    // 认证服务 — 全局单例
+    val authService = remember { AuthService() }
 
-    // 未登录 → 显示登录页
-    if (authState !is cloud.AuthService.AuthState.SignedIn) {
+    // 登录状态
+    var isLoggedIn by remember { mutableStateOf(false) }
+    var isCheckingLogin by remember { mutableStateOf(true) }
+
+    // 检查本地是否已有登录态
+    LaunchedEffect(Unit) {
+        isLoggedIn = authService.restoreSession()
+        isCheckingLogin = false
+    }
+
+    if (isCheckingLogin) {
+        // 启动加载页
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (!isLoggedIn) {
         LoginScreen(
-            onLoginSuccess = { /* 自动导航到主界面 */ }
+            authService = authService,
+            onLoginSuccess = {
+                isLoggedIn = true
+            }
         )
         return
     }
 
-    // 已登录 → 主界面
-    MainApp(
-        isDarkMode = isDarkMode,
-        onThemeChange = { isDarkMode = it }
+    // ===== 已登录，显示主界面 =====
+    MainAppScreen(
+        authService = authService,
+        onLogout = {
+            authService.logout()
+            isLoggedIn = false
+        }
     )
 }
 
 /**
- * 主应用界面（已登录状态）
+ * 主应用界面（登录后）
  */
 @Composable
-fun MainApp(
-    isDarkMode: Boolean,
-    onThemeChange: (Boolean) -> Unit
+fun MainAppScreen(
+    authService: AuthService,
+    onLogout: () -> Unit
 ) {
+    var isDarkMode by remember { mutableStateOf(false) }
+
     // 成就系统状态
     var showAchievements by remember { mutableStateOf(false) }
     var newAchievements by remember { mutableStateOf<List<Achievement>>(emptyList()) }
     val scope = rememberCoroutineScope()
-    val repository = SportTaskRepository
+    val repository = remember { SportTaskRepository() }
 
     val colors = if (isDarkMode) {
         darkColors(
@@ -100,6 +128,7 @@ fun MainApp(
                 when (selectedIndex) {
                     0 -> TrainingScreen(
                         onTrainingComplete = {
+                            // 训练完成，检查成就
                             scope.launch {
                                 val achs = AchievementManager.checkNewAchievements(repository)
                                 if (achs.isNotEmpty()) {
@@ -113,8 +142,9 @@ fun MainApp(
                     2 -> CheckinScreen()
                     3 -> StatisticsScreen()
                     4 -> SettingsScreen(
-                        isDarkMode = isDarkMode,
-                        onThemeChange = onThemeChange
+                        onThemeChange = { isDarkMode = it },
+                        authService = authService,
+                        onLogout = onLogout
                     )
                     else -> TrainingScreen()
                 }

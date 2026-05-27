@@ -10,9 +10,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import cloud.AuthService
-import cloud.SyncManager
 import data.SportTaskRepository
+import data.remote.ApiClient
+import data.remote.AuthService
+import data.remote.ServerConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -20,11 +21,17 @@ import kotlinx.coroutines.withContext
 // 设置屏幕
 @Composable
 fun SettingsScreen(
-    isDarkMode: Boolean = false,
-    onThemeChange: ((Boolean) -> Unit)? = null
+    onThemeChange: ((Boolean) -> Unit)? = null,
+    authService: AuthService? = null,
+    onLogout: (() -> Unit)? = null
 ) {
-    val repository = SportTaskRepository
+    val repository = SportTaskRepository()
     val scope = rememberCoroutineScope()
+
+    // 同步状态
+    var isSyncing by remember { mutableStateOf(false) }
+    var syncError by remember { mutableStateOf<String?>(null) }
+    var syncSuccess by remember { mutableStateOf(false) }
 
     var showAboutDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
@@ -38,6 +45,7 @@ fun SettingsScreen(
     var importJson by remember { mutableStateOf("") }
     var showSuccessMessage by remember { mutableStateOf(false) }
     var importResult by remember { mutableStateOf<data.ImportResult?>(null) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     var totalGroups by remember { mutableStateOf(0) }
     var totalActions by remember { mutableStateOf(0) }
@@ -53,12 +61,8 @@ fun SettingsScreen(
     var soundEnabled by remember { mutableStateOf(true) }
     var vibrationEnabled by remember { mutableStateOf(false) }
 
-    // 深色模式状态（由父组件管理）
-    var localDarkMode by remember { mutableStateOf(false) }
-    // 当父组件更新时同步
-    LaunchedEffect(isDarkMode) {
-        localDarkMode = isDarkMode
-    }
+    // 深色模式状态
+    var isDarkMode by remember { mutableStateOf(false) }
 
     // 加载统计数据
     fun loadStats() {
@@ -111,16 +115,93 @@ fun SettingsScreen(
                 }
             }
 
+            // 云同步部分
+            if (authService != null) {
+                item {
+                    val isLoggedIn = authService.isLoggedIn
+                    val userEmail = authService.userEmail
+
+                    SettingsSection(title = "☁️ 云同步") {
+                        if (!isLoggedIn) {
+                            SettingsItem(
+                                icon = "🔑",
+                                title = "未登录",
+                                subtitle = "登录后可同步数据到云端",
+                                onClick = { onLogout?.invoke() }
+                            )
+                        } else {
+                            SettingsItem(
+                                icon = "👤",
+                                title = "账号",
+                                subtitle = userEmail.ifEmpty { "未知" },
+                                onClick = { }
+                            )
+                            SettingsItem(
+                                icon = if (isSyncing) "🔄" else "📤",
+                                title = if (isSyncing) "同步中..." else "手动同步",
+                                subtitle = when {
+                                    isSyncing -> "正在上传下载数据"
+                                    syncSuccess -> "✅ 上次同步成功"
+                                    syncError != null -> "❌ $syncError"
+                                    else -> "点击立即同步数据到云端"
+                                },
+                                onClick = {
+                                    if (!isSyncing) {
+                                        isSyncing = true
+                                        syncError = null
+                                        syncSuccess = false
+                                        scope.launch {
+                                            try {
+                                                val client = ApiClient()
+                                                // 尝试拉取增量同步测试连接
+                                                val result = client.pull(authService.token)
+                                                result.fold(
+                                                    onSuccess = {
+                                                        syncSuccess = true
+                                                        syncError = null
+                                                    },
+                                                    onFailure = { e ->
+                                                        syncError = e.message ?: "同步失败"
+                                                    }
+                                                )
+                                            } catch (e: Exception) {
+                                                syncError = e.message ?: "连接失败"
+                                            } finally {
+                                                isSyncing = false
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                            SettingsItem(
+                                icon = "🔗",
+                                title = "服务器地址",
+                                subtitle = ServerConfig.baseUrl,
+                                onClick = { }
+                            )
+                            // 退出登录按钮
+                            SettingsItem(
+                                icon = "🚪",
+                                title = "退出登录",
+                                subtitle = "退出后本地数据保留",
+                                onClick = { showLogoutDialog = true },
+                                isDestructive = true
+                            )
+                        }
+                    }
+                }
+            }
+
             // 外观设置部分
             item {
                 SettingsSection(title = "外观") {
                     SettingsSwitchItem(
                         icon = "🌙",
                         title = "深色模式",
-                        subtitle = if (localDarkMode) "已开启" else "未开启",
-                        checked = localDarkMode,
+                        subtitle = if (isDarkMode) "已开启" else "未开启",
+                        checked = isDarkMode,
                         onCheckedChange = { enabled ->
-                            localDarkMode = enabled
+                            isDarkMode = enabled
                             onThemeChange?.invoke(enabled)
                         }
                     )
@@ -208,60 +289,6 @@ fun SettingsScreen(
                         title = "清除数据",
                         subtitle = "删除所有训练记录和分组",
                         onClick = { showClearDataDialog = true },
-                        isDestructive = true
-                    )
-                }
-            }
-
-            // 云同步部分
-            item {
-                SettingsSection(title = "云同步") {
-                    val syncState = SyncManager.state
-                    val syncSubtitle = when (syncState) {
-                        is cloud.SyncManager.SyncState.Idle -> {
-                            if (SyncManager.lastSyncSuccess) "上次同步成功" else "未同步"
-                        }
-                        is cloud.SyncManager.SyncState.Syncing -> "同步中..."
-                        is cloud.SyncManager.SyncState.Success -> "同步成功"
-                        is cloud.SyncManager.SyncState.Error -> "同步失败: ${syncState.message}"
-                    }
-                    val syncIcon = when (syncState) {
-                        is cloud.SyncManager.SyncState.Syncing -> "🔄"
-                        is cloud.SyncManager.SyncState.Success -> "✅"
-                        is cloud.SyncManager.SyncState.Error -> "❌"
-                        else -> if (SyncManager.lastSyncSuccess) "☁️" else "☁️"
-                    }
-                    SettingsItem(
-                        icon = syncIcon,
-                        title = "同步状态",
-                        subtitle = syncSubtitle,
-                        onClick = {
-                            scope.launch {
-                                SyncManager.sync()
-                            }
-                        }
-                    )
-                    val authState = AuthService.authState.collectAsState().value
-                    val userEmail = if (authState is cloud.AuthService.AuthState.SignedIn) {
-                        authState.email
-                    } else {
-                        "未登录"
-                    }
-                    SettingsItem(
-                        icon = "👤",
-                        title = "账号",
-                        subtitle = userEmail,
-                        onClick = { }
-                    )
-                    SettingsItem(
-                        icon = "🚪",
-                        title = "退出登录",
-                        subtitle = "退出后数据保留在本地",
-                        onClick = {
-                            scope.launch {
-                                AuthService.signOut()
-                            }
-                        },
                         isDestructive = true
                     )
                 }
@@ -528,6 +555,31 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { showSuccessMessage = false }) {
                     Text("确定")
+                }
+            }
+        )
+    }
+
+    // 退出登录确认对话框
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("退出登录") },
+            text = { Text("退出后本地数据保留，下次登录可恢复同步。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        authService?.logout()
+                        onLogout?.invoke()
+                    }
+                ) {
+                    Text("退出", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("取消")
                 }
             }
         )

@@ -10,3 +10,7 @@ build/
 iosApp/iosApp.xcworkspace/*
 iosApp/iosApp.xcodeproj/*
 !iosApp/iosApp.xcodeproj/project.pbxproj
+
+# 本地服务器配置（包含 IP 地址，不提交到 git）
+androidApp/src/main/assets/server_url.txt
+*.local.*
