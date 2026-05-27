@@ -7,6 +7,12 @@ AI SportTask 是一款个人运动任务管理与打卡应用，帮助用户以�
 - **平台**: Android、iOS (Kotlin Multiplatform)
 - **UI**: Compose Multiplatform
 - **数据**: SQLDelight (本地持久化)
+- **网络**: Ktor Client (HTTP)
+- **序列化**: kotlinx-serialization
+- **认证**: JWT (bcrypt + jsonwebtoken)
+- **后端**: Node.js + Express + SQLite
+- **服务器**: VPS (Racknerd, Santa Clara)
+- **跨平台存储**: expect/actual (Android SharedPreferences / iOS NSUserDefaults)
 
 ## 项目结构
 ```
@@ -14,11 +20,22 @@ AI SportTask 是一款个人运动任务管理与打卡应用，帮助用户以�
 │   ├── src/
 │   │   ├── commonMain/
 │   │   │   ├── kotlin/
-│   │   │   │   ├── App.kt             # 应用主入口与导航
-│   │   │   │   ├── data/             # 数据层（Repository、Model、成就系统）
+│   │   │   │   ├── App.kt             # 应用主入口（登录拦截 + 导航）
+│   │   │   │   ├── data/             # 数据层
+│   │   │   │   │   ├── Models.kt
+│   │   │   │   │   ├── Repository.kt
+│   │   │   │   │   ├── AchievementManager.kt
+│   │   │   │   │   └── remote/       # 云网络层
+│   │   │   │   │       ├── ApiClient.kt
+│   │   │   │   │       ├── AuthService.kt
+│   │   │   │   │       └── ServerConfig.kt
+│   │   │   │   ├── cloud/            # 云端实现（并行）
+│   │   │   │   │   ├── ApiClient.kt
+│   │   │   │   │   ├── AuthService.kt
+│   │   │   │   │   └── SyncManager.kt
 │   │   │   │   ├── db/                # 数据库层
-│   │   │   │   ├── pages/             # 页面组件
-│   │   │   │   └── ui/                # UI 通用组件（成就弹窗等）
+│   │   │   │   ├── pages/             # 页面组件（含 LoginScreen）
+│   │   │   │   └── ui/                # UI 通用组件
 │   │   │   └── sqldelight/            # SQLDelight 数据库定义
 │   │   ├── androidMain/
 │   │   │   └── kotlin/               # Android 平台实现
@@ -162,7 +179,29 @@ AI SportTask 是一款个人运动任务管理与打卡应用，帮助用户以�
 - 日期格式统一为 `YYYY-MM-DD`
 - 时长字段单位统一为秒
 
+### 5. 云同步（v0.3 新增）
+- ✅ 自托管后端部署（Node.js + Express + SQLite + JWT）
+- ✅ 用户注册/登录
+- ✅ 增量数据拉取（Pull）与推送（Push）
+- ✅ 全量数据同步（Full）
+- ✅ 后端管理脚本（sporttask-backend.sh + crontab 开机自启）
+- ✅ App 端登录/注册页面（LoginScreen）
+- ✅ Ktor HTTP 网络层（ApiClient）
+- ✅ Token 持久化（expect/actual PlatformStorage）
+- ✅ 服务器地址本地配置（不提交 git）
+- ✅ 设置页云同步板块（账号/同步/退出登录）
+
+### 6. 成就系统（v0.3 新增）
+- ✅ 条件成就自动解锁
+- ✅ 训练完成时弹窗展示
+- ✅ AchievementManager 核心逻辑
+
+### 7. UI 增强（v0.3 新增）
+- ✅ 登录拦截流程（App → 检查 Token → 未登录→ LoginScreen）
+- ✅ 深色模式（v0.2 已有）
+- ✅ 训练音效与震动反馈（v0.2 已有）
+
 ---
 
-**更新时间**: 2026-05-26
-**版本**: v0.2 (基本完成)
+**更新时间**: 2026-05-27
+**版本**: v0.3 (云同步骨架完成)
