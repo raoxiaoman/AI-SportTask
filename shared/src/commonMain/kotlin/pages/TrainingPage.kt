@@ -49,6 +49,7 @@ fun TrainingScreen(
     var selectedGroup by remember { mutableStateOf<GroupItem?>(null) }
     var showPrepareScreen by remember { mutableStateOf(false) }
     var showExecuteScreen by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         val actionGroups = repository.getGroups()
@@ -548,6 +549,9 @@ fun TrainingExecuteScreen(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.size(280.dp)
                 ) {
+                    // 读取颜色（捕获到 Canvas 外，因为 Canvas 内不是 @Composable 上下文）
+                    val progressColor = if (isResting) MaterialTheme.colors.secondary else MaterialTheme.colors.primary
+
                     // 背景圆环
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val strokeWidth = 16.dp.toPx()
@@ -570,7 +574,7 @@ fun TrainingExecuteScreen(
 
                         // 进度弧
                         drawArc(
-                            color = if (isResting) MaterialTheme.colors.secondary else MaterialTheme.colors.primary,
+                            color = progressColor,
                             startAngle = -90f,
                             sweepAngle = 360f * animatedProgress,
                             useCenter = false,
@@ -700,11 +704,10 @@ fun TrainingExecuteScreen(
                             backgroundColor = if (isRunning) MaterialTheme.colors.error else MaterialTheme.colors.primary,
                             modifier = Modifier.size(72.dp)
                         ) {
-                            Icon(
-                                if (isRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = if (isRunning) "暂停" else "开始",
-                                tint = Color.White,
-                                modifier = Modifier.size(36.dp)
+                            Text(
+                                text = if (isRunning) "⏸️" else "▶️",
+                                style = MaterialTheme.typography.h4,
+                                color = Color.White
                             )
                         }
 

@@ -25,7 +25,7 @@ fun SettingsScreen(
     authService: AuthService? = null,
     onLogout: (() -> Unit)? = null
 ) {
-    val repository = SportTaskRepository()
+    val repository = SportTaskRepository
     val scope = rememberCoroutineScope()
 
     // 同步状态

@@ -72,7 +72,7 @@ fun MainAppScreen(
     var showAchievements by remember { mutableStateOf(false) }
     var newAchievements by remember { mutableStateOf<List<Achievement>>(emptyList()) }
     val scope = rememberCoroutineScope()
-    val repository = remember { SportTaskRepository() }
+    val repository = remember { SportTaskRepository }
 
     val colors = if (isDarkMode) {
         darkColors(
