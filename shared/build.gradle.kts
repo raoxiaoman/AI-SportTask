@@ -6,26 +6,7 @@ plugins {
     id("app.cash.sqldelight")
 }
 
-// ===== 服务器配置自动生成 =====
-val serverConfigDir = layout.buildDirectory.dir("generated/serverConfig")
-val localPropFile = rootProject.file("local.properties")
-val apiBaseUrl = if (localPropFile.exists()) {
-    localPropFile.readLines()
-        .firstOrNull { it.startsWith("api.baseUrl=") }
-        ?.substringAfter("=")
-        ?.trim()
-        ?: "http://localhost:3456"
-} else {
-    "http://localhost:3456"
-}
-
 kotlin {
-    sourceSets {
-        commonMain {
-            kotlin.srcDir(serverConfigDir)
-        }
-    }
-
     androidTarget("android")
 
     listOf(
@@ -92,40 +73,6 @@ kotlin {
             }
         }
     }
-}
-
-// 生成 ServerConfig.kt（编译前执行）
-tasks.register("generateServerConfig") {
-    doLast {
-        val file = serverConfigDir.get().file("cloud/ServerConfig.kt").asFile
-        file.parentFile.mkdirs()
-        file.writeText(
-            """
-package cloud
-
-/**
- * 服务器配置 — 由 Gradle 自动生成
- * 设置: local.properties → api.baseUrl
- * 默认: http://localhost:3456
- */
-object ServerConfig {
-    const val API_BASE_URL = "$apiBaseUrl"
-}
-""".trimStart()
-        )
-    }
-}
-
-// 所有编译任务依赖生成器
-tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
-    dependsOn("generateServerConfig")
-}
-
-tasks.named("generateServerConfig") {
-    if (localPropFile.exists()) {
-        inputs.file(localPropFile)
-    }
-    outputs.dir(serverConfigDir)
 }
 
 android {

@@ -11,14 +11,14 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
+import data.remote.ServerConfig
 
 /**
  * 后端 API 客户端 — 连接自托管后端
- *
- * 后端地址见 ServerConfig.API_BASE_URL
+ * 地址运行时读取 data.remote.ServerConfig.baseUrl
  */
 object ApiClient {
-    const val BASE_URL = ServerConfig.API_BASE_URL
+    private fun baseUrl(path: String): String = "${ServerConfig.baseUrl}$path"
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -41,7 +41,7 @@ object ApiClient {
 
     suspend fun signup(email: String, password: String): AuthResponse {
         return withContext(Dispatchers.Default) {
-            val response = client.post("$BASE_URL/api/auth/signup") {
+            val response = client.post(baseUrl("/api/auth/signup")) {
                 contentType(ContentType.Application.Json)
                 setBody(AuthRequest(email, password))
             }
@@ -51,7 +51,7 @@ object ApiClient {
 
     suspend fun signin(email: String, password: String): AuthResponse {
         return withContext(Dispatchers.Default) {
-            val response = client.post("$BASE_URL/api/auth/signin") {
+            val response = client.post(baseUrl("/api/auth/signin")) {
                 contentType(ContentType.Application.Json)
                 setBody(AuthRequest(email, password))
             }
@@ -63,7 +63,7 @@ object ApiClient {
 
     suspend fun getFullData(): SyncData {
         return withContext(Dispatchers.Default) {
-            val response = client.get("$BASE_URL/api/sync/full") {
+            val response = client.get(baseUrl("/api/sync/full")) {
                 header("Authorization", authHeader)
             }
             response.body<SyncData>()
@@ -72,7 +72,7 @@ object ApiClient {
 
     suspend fun push(groups: List<PushGroup>, actions: List<PushAction>, checkins: List<PushCheckin>): PushResult {
         return withContext(Dispatchers.Default) {
-            val response = client.post("$BASE_URL/api/sync/push") {
+            val response = client.post(baseUrl("/api/sync/push")) {
                 contentType(ContentType.Application.Json)
                 header("Authorization", authHeader)
                 setBody(PushRequest(groups, actions, checkins))
@@ -83,7 +83,7 @@ object ApiClient {
 
     suspend fun pull(lastSyncTimestamp: String? = null): SyncData {
         return withContext(Dispatchers.Default) {
-            val response = client.post("$BASE_URL/api/sync/pull") {
+            val response = client.post(baseUrl("/api/sync/pull")) {
                 contentType(ContentType.Application.Json)
                 header("Authorization", authHeader)
                 setBody(PullRequest(lastSyncTimestamp))
