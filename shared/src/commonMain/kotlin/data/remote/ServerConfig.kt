@@ -16,7 +16,7 @@ object ServerConfig {
         baseUrl = url.trimEnd('/')
         // 持久化到本地存储
         try {
-            val storage = PlatformStorage()
+            val storage = PlatformStorageProvider.get()
             storage.save("sporttask_server_url", baseUrl)
         } catch (_: Exception) {
             // 存储未初始化时忽略
@@ -29,7 +29,7 @@ object ServerConfig {
      */
     fun restoreFromStorage(): Boolean {
         return try {
-            val storage = PlatformStorage()
+            val storage = PlatformStorageProvider.get()
             val saved = storage.load("sporttask_server_url")
             if (!saved.isNullOrBlank()) {
                 baseUrl = saved.trimEnd('/')

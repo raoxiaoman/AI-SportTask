@@ -34,7 +34,7 @@ data class AuthState(
 
 class AuthService(private val apiClient: ApiClient = ApiClient()) {
 
-    private val storage by lazy { PlatformStorage() }
+    private val storage by lazy { PlatformStorageProvider.get() }
 
     // 内存中的当前认证状态
     var currentState: AuthState = AuthState()

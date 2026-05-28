@@ -5,7 +5,8 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import data.remote.PlatformStorage
+import data.remote.AndroidPlatformStorage
+import data.remote.PlatformStorageProvider
 import data.remote.ServerConfig
 import db.initDb
 
@@ -14,7 +15,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // 初始化平台存储（SharedPreferences）
-        PlatformStorage.init(this)
+        PlatformStorageProvider.init(AndroidPlatformStorage(this))
 
         // 从本地存储恢复服务器地址
         val savedUrl = getPreferences(Context.MODE_PRIVATE)
