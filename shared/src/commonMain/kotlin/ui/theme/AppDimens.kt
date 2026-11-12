@@ -39,6 +39,14 @@ object AppDimens {
     val weekChipHeight: Dp = 28.dp
 
     val buttonHeight: Dp = 52.dp
+    /** 弹窗内按钮高度（比页面主按钮略矮，避免弹窗过高） */
+    val dialogButtonHeight: Dp = 40.dp
+    /** 弹窗最大宽度，避免大屏上正文行过长 */
+    val dialogMaxWidth: Dp = 360.dp
+    /** 弹窗多行文本输入区高度（导出/导入 JSON） */
+    val dialogTextAreaHeight: Dp = 180.dp
+    /** 页面表单多行文本输入区高度（步骤说明） */
+    val formTextAreaHeight: Dp = 120.dp
     val navHeight: Dp = 64.dp
     val logoSize: Dp = 80.dp
     val actionStripHeight: Dp = 72.dp
