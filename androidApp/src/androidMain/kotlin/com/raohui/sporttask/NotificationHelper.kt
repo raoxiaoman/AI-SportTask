@@ -9,7 +9,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class NotificationHelper(private val context: Context) {
 
@@ -22,6 +25,13 @@ class NotificationHelper(private val context: Context) {
         const val KEY_REMINDER_ENABLED = "reminder_enabled"
         const val KEY_REMINDER_HOUR = "reminder_hour"
         const val KEY_REMINDER_MINUTE = "reminder_minute"
+        const val KEY_REMINDER_PREVIEW = "reminder_preview"
+        const val KEY_REMINDER_PREVIEW_DATE = "reminder_preview_date"
+        const val KEY_PLAN_START_DATE = "plan_start_date"
+        const val KEY_PLAN_TOTAL_DAYS = "plan_total_days"
+        private const val DEFAULT_TEXT = "今天还没训练呢？来动一动吧！"
+        private const val HALF_DAY_MS = 12L * 60 * 60 * 1000
+        private const val DAY_MS = 24L * 60 * 60 * 1000
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -54,10 +64,18 @@ class NotificationHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val savedDate = prefs.getString(KEY_REMINDER_PREVIEW_DATE, null)
+        // 文案只在打开 App 时生成；隔天未打开则丢弃，避免展示昨天的完成状态
+        val preview = prefs.getString(KEY_REMINDER_PREVIEW, null)
+            ?.takeIf { it.isNotBlank() && savedDate == today }
+        val body = preview ?: fallbackText(today)
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("训练提醒")
-            .setContentText("今天还没训练呢？来动一动吧！")
+            .setContentTitle(if (preview != null) "今日训练" else "训练提醒")
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -66,10 +84,35 @@ class NotificationHelper(private val context: Context) {
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
+    /** 未打开 App 时，按计划起始日算出进度文案，不依赖数据库与协程 */
+    private fun fallbackText(today: String): String {
+        val start = prefs.getString(KEY_PLAN_START_DATE, null)
+        if (start.isNullOrBlank()) return DEFAULT_TEXT
+        val diff = daysBetween(start, today) ?: return DEFAULT_TEXT
+        val day = diff + 1
+        val total = prefs.getInt(KEY_PLAN_TOTAL_DAYS, 56).coerceAtLeast(1)
+        return when {
+            day < 1 -> "康复计划 $start 开始"
+            day > total -> "8 周计划已完成，保持每周 2 次训练"
+            else -> "康复计划第 $day/$total 天 · 打开 App 查看今日动作"
+        }
+    }
+
+    private fun daysBetween(from: String, to: String): Int? {
+        val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        return try {
+            val a = fmt.parse(from) ?: return null
+            val b = fmt.parse(to) ?: return null
+            ((b.time - a.time + HALF_DAY_MS) / DAY_MS).toInt()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun setReminderEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_REMINDER_ENABLED, enabled).apply()
         if (enabled) {
-            val hour = prefs.getInt(KEY_REMINDER_HOUR, 9)
+            val hour = prefs.getInt(KEY_REMINDER_HOUR, 21)
             val minute = prefs.getInt(KEY_REMINDER_MINUTE, 0)
             scheduleDailyReminder(hour, minute)
         } else {
@@ -93,14 +136,14 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun getReminderHour(): Int {
-        return prefs.getInt(KEY_REMINDER_HOUR, 9)
+        return prefs.getInt(KEY_REMINDER_HOUR, 21)
     }
 
     fun getReminderMinute(): Int {
         return prefs.getInt(KEY_REMINDER_MINUTE, 0)
     }
 
-    fun scheduleDailyReminder(hour: Int = 9, minute: Int = 0) {
+    fun scheduleDailyReminder(hour: Int = 21, minute: Int = 0) {
         val calendar = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
@@ -153,7 +196,7 @@ class ReminderReceiver : BroadcastReceiver() {
             )
             val enabled = prefs.getBoolean(NotificationHelper.KEY_REMINDER_ENABLED, false)
             if (enabled) {
-                val hour = prefs.getInt(NotificationHelper.KEY_REMINDER_HOUR, 9)
+                val hour = prefs.getInt(NotificationHelper.KEY_REMINDER_HOUR, 21)
                 val minute = prefs.getInt(NotificationHelper.KEY_REMINDER_MINUTE, 0)
                 val helper = NotificationHelper(context)
                 helper.scheduleDailyReminder(hour, minute)

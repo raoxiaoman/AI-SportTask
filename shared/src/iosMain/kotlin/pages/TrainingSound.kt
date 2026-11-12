@@ -13,6 +13,14 @@ actual fun playCountdownSound() {
     // iOS 音效待实现
 }
 
+actual fun playCountdownTickSound() {
+    // iOS 音效待实现
+}
+
+actual fun playPauseSound() {
+    // iOS 音效待实现
+}
+
 actual fun vibrateShort() {
     // iOS 震动待实现
 }
