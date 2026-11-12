@@ -42,6 +42,51 @@ object SportTaskRepository {
         q.getActionsByGroup(groupId).executeAsList()
     }
 
+    /**
+     * 首帧同步读取：数据量很小（最多几十条），用于让页面第一帧就渲染真实内容。
+     * 此前依赖 LaunchedEffect 加载 + FullScreenLoading，冷启动时窗口未拿到焦点、
+     * 帧调度未启动会一直停在「白屏 + 一个转圈」，直到用户点一下屏幕才刷新。
+     */
+    fun loadGroupItemsSync(): List<GroupItem> = runCatching {
+        q.getAllActionGroups().executeAsList().map { g ->
+            GroupItem(
+                id = g.id,
+                name = g.name,
+                actionCount = q.countActionsInGroup(g.id).executeAsOne().toInt()
+            )
+        }
+    }.getOrDefault(emptyList())
+
+    fun loadActionItemsSync(groupId: Long): List<ActionItem> = runCatching {
+        q.getActionsByGroup(groupId).executeAsList().map { a ->
+            ActionItem(
+                id = a.id,
+                name = a.name,
+                stepsText = a.steps_text ?: "",
+                defaultTime = a.default_time.toInt(),
+                restTime = a.rest_time.toInt(),
+                orderIndex = a.order_index.toInt()
+            )
+        }
+    }.getOrDefault(emptyList())
+
+    fun countActionsSync(groupId: Long): Int = runCatching {
+        q.countActionsInGroup(groupId).executeAsOne().toInt()
+    }.getOrDefault(0)
+
+    fun hasCompletedSync(groupId: Long, today: String): Boolean = runCatching {
+        q.getCheckinsByDateRange(today, today).executeAsList()
+            .any { it.group_id == groupId && it.is_completed == 1L }
+    }.getOrDefault(false)
+
+    /** 区间内完成打卡的日期集合（同步读取，供首页本周节奏使用） */
+    fun completedDatesSync(startDate: String, endDate: String): Set<String> = runCatching {
+        q.getCheckinsByDateRange(startDate, endDate).executeAsList()
+            .filter { it.is_completed == 1L }
+            .map { it.date }
+            .toSet()
+    }.getOrDefault(emptySet())
+
     suspend fun getAllActions() = withContext(Dispatchers.Default) {
         // 获取所有分组的所有动作
         val groups = q.getAllActionGroups().executeAsList()
@@ -85,6 +130,11 @@ object SportTaskRepository {
 
     suspend fun deleteAction(id: Long) = withContext(Dispatchers.Default) {
         q.deleteActionById(id)
+    }
+
+    /** 删除分组下全部动作（重置计划时用） */
+    suspend fun deleteActionsInGroup(groupId: Long) = withContext(Dispatchers.Default) {
+        q.deleteActionsByGroup(groupId)
     }
 
     suspend fun addCheckin(

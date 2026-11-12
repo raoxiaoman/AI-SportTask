@@ -64,6 +64,9 @@ DELETE FROM action WHERE id = ?;
 countActionsInGroup:
 SELECT COUNT(*) AS c FROM action WHERE group_id = ?;
 
+deleteActionsByGroup:
+DELETE FROM action WHERE group_id = ?;
+
 -- Checkin queries
 insertCheckin:
 INSERT INTO checkin(date, group_id, action_id, duration, is_completed) VALUES (?, ?, ?, ?, ?);
