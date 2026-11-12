@@ -8,12 +8,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- Android 11+ 包可见性：TextToSpeech 需要能查询到系统语音引擎，否则倒数语音会静默 -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
-    </queries>
+    <!-- 训练语音为 App 内置音频，运行时不查询 / 不调用系统 TTS 引擎 -->
 
     <application
         android:usesCleartextTraffic="true"

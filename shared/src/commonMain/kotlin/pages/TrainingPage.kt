@@ -561,7 +561,9 @@ fun TrainingPrepareScreen(
         } else {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    // 顶部返回行已占据高度，这里必须按剩余空间撑开；
+                    // 用 fillMaxSize 会让内层整体超过屏幕，把底部按钮挤出可视区。
+                    .weight(1f)
                     .padding(horizontal = AppDimens.screenPadding)
             ) {
                 // 训练概览
@@ -617,6 +619,8 @@ fun TrainingPrepareScreen(
                 SectionHeader(text = "动作序列")
 
                 LazyColumn(
+                    // 列表吃掉剩余空间，底部主按钮始终固定在可视区域
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(AppDimens.s2)
                 ) {
                     items(actions) { action ->
@@ -683,23 +687,25 @@ fun TrainingPrepareScreen(
                             }
                         }
                     }
-                    item { Spacer(modifier = Modifier.height(AppDimens.s6)) }
+                    item { Spacer(modifier = Modifier.height(AppDimens.s3)) }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(AppDimens.s2))
 
                 Button(
                     onClick = onStartClick,
                     enabled = actions.isNotEmpty(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = AppDimens.s4),
+                        .height(AppDimens.buttonHeight),
                     shape = AppShapes.button
                 ) {
                     AppIcon(AppIcons.Play, contentDescription = null, size = AppDimens.iconSmall)
                     Spacer(modifier = Modifier.width(AppDimens.s2))
                     Text("开始训练")
                 }
+
+                Spacer(modifier = Modifier.height(AppDimens.s4))
             }
         }
     }
@@ -727,6 +733,9 @@ fun TrainingExecuteScreen(
     var totalElapsedSeconds by remember { mutableStateOf(0) }
     var isCompleted by remember { mutableStateOf(false) }
     var showDetailDialog by remember { mutableStateOf(false) }
+    // 首次开始与暂停后恢复播报不同文案；过半提示每个动作只响一次
+    var hasStarted by remember { mutableStateOf(false) }
+    var halfwayAnnounced by remember { mutableStateOf(false) }
 
     // 计时器
     val scope = rememberCoroutineScope()
@@ -736,37 +745,53 @@ fun TrainingExecuteScreen(
         if (showDetailDialog) showDetailDialog = false else onBackClick()
     }
 
-    // 预热语音引擎，离开执行页时释放
+    // 预加载本地音频片段，离开执行页时停止并释放
     DisposableEffect(Unit) {
-        prepareCountdownVoice()
-        onDispose { releaseCountdownVoice() }
+        prepareTrainingAudio()
+        onDispose {
+            stopTrainingAudio()
+            releaseTrainingAudio()
+        }
     }
 
     // 计时器逻辑
     LaunchedEffect(isRunning, currentActionIndex, isResting) {
         if (isRunning && !isCompleted) {
             val action = actions.getOrNull(currentActionIndex) ?: return@LaunchedEffect
+            val phaseDuration = if (isResting) action.restTime else action.defaultTime
 
             while (remainingSeconds > 0 && isRunning) {
                 delay(1000)
                 remainingSeconds--
                 totalElapsedSeconds++
 
-                // 全程每秒一声秒针声；最后 5 秒额外语音读 5 / 4 / 3 / 2 / 1
                 val left = remainingSeconds
                 if (left > 0) {
+                    // 全程木质秒针；最后 5 秒叠加中文数字；长动作过半提醒一次
                     TrainingFeedback.onSecondElapsed(left)
+                    if (!isResting && !halfwayAnnounced &&
+                        phaseDuration >= 40 && left == phaseDuration / 2
+                    ) {
+                        halfwayAnnounced = true
+                        TrainingFeedback.onHalfway()
+                    }
                 }
             }
 
-            // 时间到，切换状态
+            // 时间到：先播报阶段变化，再切换状态
             if (isRunning) {
                 val willFinish = if (isResting) {
                     currentActionIndex >= actions.size - 1
                 } else {
                     action.restTime <= 0 && currentActionIndex >= actions.size - 1
                 }
-                if (willFinish) TrainingFeedback.onComplete() else TrainingFeedback.onPhaseEnd()
+                when {
+                    willFinish -> TrainingFeedback.onComplete()
+                    isResting -> TrainingFeedback.onRestEnd()
+                    action.restTime > 0 -> TrainingFeedback.onEnterRest()
+                    else -> TrainingFeedback.onNextAction()
+                }
+                halfwayAnnounced = false
 
                 if (isResting) {
                     // 休息结束，下一个动作
@@ -1074,6 +1099,8 @@ fun TrainingExecuteScreen(
                     ) {
                         TextButton(
                             onClick = {
+                                TrainingFeedback.onSkip()
+                                halfwayAnnounced = false
                                 if (isResting) {
                                     if (currentActionIndex < actions.size - 1) {
                                         currentActionIndex++
@@ -1106,7 +1133,14 @@ fun TrainingExecuteScreen(
                         // 暂停/开始（圆形主按钮）
                         FloatingActionButton(
                             onClick = {
-                                if (isRunning) TrainingFeedback.onPause() else TrainingFeedback.onStart()
+                                if (isRunning) {
+                                    TrainingFeedback.onPause()
+                                } else if (hasStarted) {
+                                    TrainingFeedback.onResume()
+                                } else {
+                                    hasStarted = true
+                                    TrainingFeedback.onStart()
+                                }
                                 isRunning = !isRunning
                             },
                             backgroundColor = if (isRunning) AppTheme.colors.brandDeep else AppTheme.colors.brandStrong,
@@ -1143,7 +1177,8 @@ fun TrainingExecuteScreen(
                                     actions[currentActionIndex].defaultTime
                                 }
                                 // 确保计时器继续运行
-                                TrainingFeedback.onStart()
+                                TrainingFeedback.onResume()
+                                halfwayAnnounced = false
                                 isRunning = true
                             },
                             modifier = Modifier.height(AppDimens.touchTarget)
@@ -1155,7 +1190,7 @@ fun TrainingExecuteScreen(
                     Spacer(modifier = Modifier.height(AppDimens.s3))
 
                     Text(
-                        text = "每秒秒针声 · 最后 5 秒语音读数",
+                        text = "木质秒针 · 开始 / 休息 / 切换 / 完成语音播报",
                         style = MaterialTheme.typography.caption,
                         color = AppTheme.colors.inkMuted
                     )

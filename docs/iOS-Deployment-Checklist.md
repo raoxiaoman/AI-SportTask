@@ -44,7 +44,7 @@
 | 问题 | 状态 |
 |------|:----:|
 | iOS `daysAgoDateString()` 实现 | ✅ 已补完 |
-| iOS 音效（`playStartSound` 等） | ⬜ 存根，返回空（不影响运行） |
+| iOS 训练音频（`TrainingAudio.kt`） | ⬜ 存根，返回空；资源名已与 Android `res/raw/*.mp3` 对齐，接入时按 `TrainingAudioEvent` 用 `NSBundle` + `AVAudioPlayer` 展开 |
 | iOS 震动反馈 | ⬜ 存根，返回空（不影响运行） |
 | 深色模式适配 | ⚠️ Compose Multiplatform 自动适配，需验证 |
 

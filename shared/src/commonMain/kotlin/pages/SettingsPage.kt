@@ -181,7 +181,7 @@ fun SettingsScreen(
                         SettingsSwitchRow(
                             icon = AppIcons.Sound,
                             title = "声音提示",
-                            subtitle = "开始 / 暂停 / 动作切换 / 完成时播放提示音",
+                            subtitle = "开始 / 暂停 / 动作切换 / 完成时播放柔和提示音",
                             checked = soundEnabled,
                             onCheckedChange = { enabled ->
                                 soundEnabled = enabled
@@ -190,8 +190,8 @@ fun SettingsScreen(
                         )
                         SettingsSwitchRow(
                             icon = AppIcons.Voice,
-                            title = "倒数语音播报",
-                            subtitle = "最后 5 秒用语音读出 5 / 4 / 3 / 2 / 1（跟随媒体音量）",
+                            title = "语音播报",
+                            subtitle = "倒数 5-1、开始 / 休息 / 切换 / 完成提示（本地音频，不卡顿）",
                             checked = voiceEnabled,
                             onCheckedChange = { enabled ->
                                 voiceEnabled = enabled
@@ -201,7 +201,7 @@ fun SettingsScreen(
                         SettingsSwitchRow(
                             icon = AppIcons.Clock,
                             title = "倒计时秒针声",
-                            subtitle = "倒计时全程每秒一声轻滴答",
+                            subtitle = "全程每秒一声木质滴答，最后 3 秒自动加重",
                             checked = tickEnabled,
                             onCheckedChange = { enabled ->
                                 tickEnabled = enabled
@@ -216,6 +216,15 @@ fun SettingsScreen(
                             onCheckedChange = { enabled ->
                                 vibrationEnabled = enabled
                                 TrainingFeedback.setVibrationEnabled(enabled)
+                            }
+                        )
+                        SettingsRow(
+                            icon = AppIcons.Sound,
+                            title = "试听音效与播报",
+                            subtitle = "按当前媒体音量播放一次开始提示，可据此调节音量",
+                            onClick = {
+                                prepareTrainingAudio()
+                                TrainingFeedback.preview()
                             },
                             isLast = true
                         )

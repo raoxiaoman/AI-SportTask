@@ -1,12 +1,6 @@
 package pages
 
-expect fun playStartSound()
-expect fun playEndSound()
-expect fun playCountdownSound()
-/** 倒计时全程每秒一声「秒针」轻滴答 */
-expect fun playCountdownTickSound()
-expect fun playPauseSound()
-
+/** 震动反馈：与音频播放解耦，静音或关闭声音时仍可独立开启 */
 expect fun vibrateShort()
 expect fun vibrateMedium()
 expect fun vibrateLong()

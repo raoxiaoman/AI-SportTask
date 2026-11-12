@@ -1,34 +1,8 @@
 package pages
 
-// iOS 实现
-actual fun playStartSound() {
-    // iOS 音效待实现
-}
+// iOS 震动待实现（本工程目前未在 Xcode 编译验证）
+actual fun vibrateShort() {}
 
-actual fun playEndSound() {
-    // iOS 音效待实现
-}
+actual fun vibrateMedium() {}
 
-actual fun playCountdownSound() {
-    // iOS 音效待实现
-}
-
-actual fun playCountdownTickSound() {
-    // iOS 音效待实现
-}
-
-actual fun playPauseSound() {
-    // iOS 音效待实现
-}
-
-actual fun vibrateShort() {
-    // iOS 震动待实现
-}
-
-actual fun vibrateMedium() {
-    // iOS 震动待实现
-}
-
-actual fun vibrateLong() {
-    // iOS 震动待实现
-}
+actual fun vibrateLong() {}
