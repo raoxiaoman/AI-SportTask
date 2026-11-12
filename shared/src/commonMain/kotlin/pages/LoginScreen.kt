@@ -1,4 +1,8 @@
 package pages
+import ui.AppIcon
+import ui.AppIcons
+import ui.theme.*
+
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -92,20 +96,22 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 32.dp),
+                .padding(horizontal = AppDimens.s8),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             // Logo / 标题
-            Text(
-                text = "🏋️",
-                fontSize = 64.sp
+            AppIcon(
+                imageVector = AppIcons.Training,
+                contentDescription = null,
+                size = AppDimens.iconHero,
+                tint = AppTheme.colors.brand
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s2))
             Text(
                 text = "AI SportTask",
                 style = MaterialTheme.typography.h4,
-                fontWeight = FontWeight.Bold
+                fontWeight = AppTypeWeight.emphasis
             )
             Text(
                 text = "智能运动任务管理",
@@ -113,7 +119,7 @@ fun LoginScreen(
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s10))
 
             // 邮箱输入
             OutlinedTextField(
@@ -133,7 +139,7 @@ fun LoginScreen(
                 enabled = !isLoading
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s3))
 
             // 密码输入
             OutlinedTextField(
@@ -156,7 +162,7 @@ fun LoginScreen(
 
             // 注册模式下的确认密码
             if (!isLoginMode) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(AppDimens.s3))
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = {
@@ -177,7 +183,7 @@ fun LoginScreen(
 
             // 错误提示
             if (errorMessage != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.s2))
                 Text(
                     text = errorMessage!!,
                     color = MaterialTheme.colors.error,
@@ -185,31 +191,31 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s6))
 
             // 提交按钮
             Button(
                 onClick = { submit() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(AppDimens.s12),
                 enabled = !isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(AppDimens.s6),
                         color = MaterialTheme.colors.onPrimary,
-                        strokeWidth = 2.dp
+                        strokeWidth = AppDimens.hairline
                     )
                 } else {
                     Text(
                         text = if (isLoginMode) "登 录" else "注 册",
-                        fontSize = 16.sp
+                        fontSize = AppTypeScale.body
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s4))
 
             // 切换登录/注册
             TextButton(
@@ -225,21 +231,21 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s2))
 
             // 服务器配置（折叠的）
             TextButton(
                 onClick = { showServerConfig = !showServerConfig }
             ) {
                 Text(
-                    text = if (showServerConfig) "收起服务器设置 ▲" else "服务器设置 ▼",
+                    text = if (showServerConfig) "收起服务器设置" else "服务器设置",
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
                 )
             }
 
             if (showServerConfig) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.s2))
                 OutlinedTextField(
                     value = serverUrl,
                     onValueChange = { serverUrl = it },
@@ -249,7 +255,7 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isLoading
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.s2))
                 Button(
                     onClick = {
                         ServerConfig.setBaseUrl(serverUrl)

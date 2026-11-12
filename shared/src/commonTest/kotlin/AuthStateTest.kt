@@ -108,7 +108,7 @@ class AuthStateTest {
 
     @Test
     fun `Error状态时isSignedIn为false`() {
-        val state = AuthService.AuthState.Error("err")
+        val state: AuthService.AuthState = AuthService.AuthState.Error("err")
         assertFalse(state is AuthService.AuthState.SignedIn)
     }
 
@@ -128,10 +128,11 @@ class AuthStateTest {
     }
 
     @Test
-    fun `同步成功响应带信息`() {
-        val success = SyncManager.SyncState.Success("同步成功 (5 条变更)")
+    fun `同步成功状态带时间戳`() {
+        val timestamp = "2025-05-26T10:00:00"
+        val success = SyncManager.SyncState.Success(timestamp)
         assertTrue(success is SyncManager.SyncState.Success)
-        assertEquals("同步成功 (5 条变更)", success.message)
+        assertEquals(timestamp, success.timestamp)
     }
 
     @Test
@@ -149,8 +150,8 @@ class AuthStateTest {
 
     @Test
     fun `Idle状态-Syncing状态-互斥`() {
-        val idle = SyncManager.SyncState.Idle
-        val syncing = SyncManager.SyncState.Syncing
+        val idle: SyncManager.SyncState = SyncManager.SyncState.Idle
+        val syncing: SyncManager.SyncState = SyncManager.SyncState.Syncing
         assertFalse(idle is SyncManager.SyncState.Syncing)
         assertFalse(syncing is SyncManager.SyncState.Idle)
     }

@@ -1,8 +1,14 @@
 package pages
+import ui.AppIcon
+import ui.AppIcons
+import ui.theme.*
+
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,8 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,7 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import data.SportTaskRepository
@@ -32,6 +36,9 @@ import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 import ui.EmptyState
 import ui.FullScreenLoading
+import ui.IconBadge
+import ui.LiteCard
+import ui.PageHeader
 
 // 分组屏幕
 @Composable
@@ -96,50 +103,48 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
         loadGroupsData()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("分组管理") })
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Text("+")
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppTheme.colors.background)
+    ) {
+        when {
+            isLoading -> {
+                FullScreenLoading()
             }
-        }
-    ) { innerPadding ->
-        Column(modifier = Modifier
-            .padding(innerPadding)
-            .padding(8.dp)) {
-            when {
-                isLoading -> {
-                    FullScreenLoading()
-                }
-                groups.isEmpty() -> {
+            groups.isEmpty() -> {
+                Column {
+                    GroupListHeader(onAddClick = { showAddDialog = true })
                     EmptyState(
-                        icon = "📂",
+                        icon = AppIcons.Folder,
                         title = "还没有训练分组",
                         subtitle = "创建一个分组来管理你的训练动作",
                         actionText = "新建分组",
                         onAction = { showAddDialog = true }
                     )
                 }
-                else -> {
-                    LazyColumn {
-                        items(groups) { group ->
-                            GroupCard(
-                                group = group,
-                                onClick = { onGroupClick(group) },
-                                onEditClick = {
-                                    currentEditingGroup = group
-                                    editGroupName = group.name
-                                    showEditDialog = true
-                                },
-                                onDeleteClick = {
-                                    currentDeletingGroup = group
-                                    showDeleteDialog = true
-                                }
-                            )
-                        }
+            }
+            else -> {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.s2)
+                ) {
+                    item { GroupListHeader(onAddClick = { showAddDialog = true }) }
+                    items(groups) { group ->
+                        GroupRow(
+                            group = group,
+                            onClick = { onGroupClick(group) },
+                            onEditClick = {
+                                currentEditingGroup = group
+                                editGroupName = group.name
+                                showEditDialog = true
+                            },
+                            onDeleteClick = {
+                                currentDeletingGroup = group
+                                showDeleteDialog = true
+                            }
+                        )
                     }
+                    item { Spacer(modifier = Modifier.height(AppDimens.s8)) }
                 }
             }
         }
@@ -192,7 +197,7 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                 text = {
                     Column {
                         Text("请输入新的分组名称：")
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppDimens.s2))
                         TextField(
                             value = editGroupName,
                             onValueChange = { editGroupName = it },
@@ -244,7 +249,7 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                 text = {
                     Column {
                         Text("请输入分组名称：")
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppDimens.s2))
                         TextField(
                             value = groupName,
                             onValueChange = { groupName = it },
@@ -260,8 +265,7 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                             if (groupName.isNotBlank()) {
                                 scope.launch {
                                     // 添加到数据库
-                                    val now = java.time.LocalDate.now().toString()
-                                    repository.addGroup(groupName, now)
+                                    repository.addGroup(groupName, todayDateString())
 
                                     // 重新加载分组列表
                                     loadGroups(repository) { groups = it }
@@ -349,7 +353,7 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
             },
             onSaveClick = { action ->
                 scope.launch {
-                    val now = java.time.LocalDate.now().toString()
+                    val now = todayDateString()
                     if (editingAction != null) {
                         repository.updateAction(
                             id = action.id,
@@ -381,69 +385,80 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
         return@GroupDetailScreen
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(group.name, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppTheme.colors.background)
+    ) {
+        // 头部行：返回 + 分组名 + 添加动作
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = AppDimens.s1,
+                    vertical = AppDimens.s2
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBackClick) {
+                AppIcon(
+                    imageVector = AppIcons.Back,
+                    contentDescription = "返回",
+                    tint = AppTheme.colors.ink
+                )
+            }
+            Text(
+                text = group.name,
+                style = MaterialTheme.typography.subtitle1,
+                fontWeight = AppTypeWeight.emphasis,
+                color = AppTheme.colors.ink,
+                modifier = Modifier.weight(1f)
+            )
+            Box(
+                modifier = Modifier
+                    .size(AppDimens.touchTarget)
+                    .clickable {
                         editingAction = null
                         showEditScreen = true
-                    }) {
-                        Icon(Icons.Filled.Add, contentDescription = "添加动作")
-                    }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                IconBadge(
+                    icon = AppIcons.Add,
+                    contentDescription = "添加动作"
+                )
+            }
+            Spacer(modifier = Modifier.width(AppDimens.s3))
+        }
+
+        // 提示文字
+        if (actions.isNotEmpty()) {
+            Text(
+                text = "长按拖拽把手排序，放手自动保存",
+                style = MaterialTheme.typography.caption,
+                color = AppTheme.colors.inkMuted,
+                modifier = Modifier.padding(horizontal = AppDimens.s4, vertical = AppDimens.s2)
+            )
+        }
+
+        if (isLoading) {
+            FullScreenLoading()
+        } else if (actions.isEmpty()) {
+            EmptyState(
+                icon = AppIcons.Strength,
+                title = "暂无动作",
+                subtitle = "点击右上角 + 添加第一个训练动作",
+                actionText = "添加动作",
+                onAction = {
+                    editingAction = null
+                    showEditScreen = true
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = {
-                editingAction = null
-                showEditScreen = true
-            }) {
-                Text("+")
-            }
-        }
-    ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            // 提示条
-            if (actions.isNotEmpty()) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = MaterialTheme.colors.primary.copy(alpha = 0.08f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = "长按 ⠿ 拖拽排序，放手自动保存",
-                        style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.primary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            if (isLoading) {
-                FullScreenLoading()
-            } else if (actions.isEmpty()) {
-                EmptyState(
-                    icon = "💪",
-                    title = "暂无动作",
-                    subtitle = "点击右下角 + 添加第一个训练动作",
-                    actionText = "添加动作",
-                    onAction = {
-                        editingAction = null
-                        showEditScreen = true
-                    }
-                )
-            } else {
-                Column(
-                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(AppDimens.s2)
+            ) {
                     actions.forEachIndexed { index, action ->
                         val isThisDragged = index == draggedIndex && isDragging
 
@@ -506,57 +521,96 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
                         )
                     }
 
-                    Spacer(Modifier.height(80.dp))
+                    Spacer(Modifier.height(AppDimens.logoSize))
                 }
-            }
         }
     }
 }
 
-// 分组卡片组件
+// 分组页头：标题 + 新建入口（替代原 FAB）
 @Composable
-fun GroupCard(group: GroupItem, onClick: () -> Unit, onEditClick: (GroupItem) -> Unit, onDeleteClick: (GroupItem) -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = 4.dp
+fun GroupListHeader(onAddClick: () -> Unit) {
+    PageHeader(
+        title = "训练分组",
+        trailing = {
+            IconBadge(
+                icon = AppIcons.Add,
+                contentDescription = "新建分组",
+                // 直接可点击，规格与其他页页头徽标一致，不撑高页头行
+                modifier = Modifier.clickable(onClick = onAddClick)
+            )
+        }
+    )
+}
+
+// 分组行卡：图标容器 + 名称/副标题 + 编辑/删除 + 箭头
+@Composable
+fun GroupRow(
+    group: GroupItem,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    LiteCard(
+        modifier = Modifier.padding(horizontal = AppDimens.screenPadding),
+        onClick = onClick
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(
+                horizontal = AppDimens.s3,
+                vertical = AppDimens.s3
+            ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier
-                .weight(1f)
-                .clickable(onClick = onClick)) {
-                Text(text = group.name, style = MaterialTheme.typography.h6)
+            IconBadge(
+                icon = AppIcons.Groups,
+                contentDescription = null
+            )
+            Spacer(modifier = Modifier.width(AppDimens.s3))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.body1,
+                    fontWeight = AppTypeWeight.medium,
+                    color = AppTheme.colors.ink
+                )
                 Text(
                     text = "${group.actionCount} 个动作",
-                    style = MaterialTheme.typography.body2,
-                    color = Color.Gray
+                    style = MaterialTheme.typography.caption,
+                    color = AppTheme.colors.inkSub
                 )
             }
-            IconButton(onClick = { onEditClick(group) }) {
-                Icon(
-                    imageVector = Icons.Filled.Edit,
+            Box(
+                modifier = Modifier
+                    .size(AppDimens.touchTarget)
+                    .clickable(onClick = onEditClick),
+                contentAlignment = Alignment.Center
+            ) {
+                AppIcon(
+                    imageVector = AppIcons.Edit,
                     contentDescription = "编辑",
-                    tint = Color.Gray
+                    tint = AppTheme.colors.inkMuted,
+                    size = AppDimens.iconSmall
                 )
             }
-            IconButton(onClick = { onDeleteClick(group) }) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
+            Box(
+                modifier = Modifier
+                    .size(AppDimens.touchTarget)
+                    .clickable(onClick = onDeleteClick),
+                contentAlignment = Alignment.Center
+            ) {
+                AppIcon(
+                    imageVector = AppIcons.Delete,
                     contentDescription = "删除",
-                    tint = Color.Gray
+                    tint = AppTheme.colors.inkMuted,
+                    size = AppDimens.iconSmall
                 )
             }
-            Icon(
-                imageVector = Icons.Filled.KeyboardArrowRight,
-                contentDescription = "详情",
-                tint = Color.Gray
+            AppIcon(
+                imageVector = AppIcons.Chevron,
+                contentDescription = "进入",
+                tint = AppTheme.colors.inkMuted,
+                size = AppDimens.iconSmall
             )
         }
     }
@@ -577,7 +631,7 @@ fun DraggableActionCard(
     onHeightMeasured: (Float) -> Unit
 ) {
     val elevation by animateFloatAsState(
-        targetValue = if (isDragging) 8f else 2f,
+        targetValue = if (isDragging) 8f else 0f,
         animationSpec = tween(150),
         label = "elevation"
     )
@@ -585,7 +639,7 @@ fun DraggableActionCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 3.dp)
+            .padding(horizontal = AppDimens.screenPadding, vertical = AppDimens.s1)
             .zIndex(if (isDragging) 10f else 0f)
             .graphicsLayer {
                 translationY = if (isDragging) dragOffsetY else 0f
@@ -595,18 +649,21 @@ fun DraggableActionCard(
             .onGloballyPositioned { coordinates ->
                 onHeightMeasured(coordinates.size.height.toFloat())
             },
-        elevation = elevation.dp
+        shape = AppShapes.chip,
+        backgroundColor = AppTheme.colors.surface,
+        elevation = elevation.dp,
+        border = BorderStroke(AppDimens.divider, AppTheme.colors.outline)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 4.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                .padding(start = AppDimens.s1, end = AppDimens.s2, top = AppDimens.s2, bottom = AppDimens.s2),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 拖拽手柄
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(AppDimens.s10)
                     .pointerInput(Unit) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = { onDragStart() },
@@ -620,10 +677,11 @@ fun DraggableActionCard(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "⠿",
-                    style = MaterialTheme.typography.body1,
-                    color = if (isDragging) MaterialTheme.colors.primary else Color.Gray
+                AppIcon(
+                    imageVector = AppIcons.DragHandle,
+                    contentDescription = "拖拽排序",
+                    size = AppDimens.iconSmall,
+                    tint = if (isDragging) AppTheme.colors.brandStrong else AppTheme.colors.inkSub
                 )
             }
 
@@ -632,8 +690,8 @@ fun DraggableActionCard(
                 text = "${index + 1}.",
                 style = MaterialTheme.typography.body1,
                 color = MaterialTheme.colors.primary,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.width(32.dp)
+                fontWeight = AppTypeWeight.medium,
+                modifier = Modifier.width(AppDimens.s8)
             )
 
             // 名称和详情
@@ -641,22 +699,31 @@ fun DraggableActionCard(
                 Text(
                     text = action.name,
                     style = MaterialTheme.typography.subtitle1,
-                    fontWeight = if (isDragging) FontWeight.Bold else FontWeight.Normal
+                    fontWeight = if (isDragging) AppTypeWeight.emphasis else AppTypeWeight.regular
                 )
                 Text(
                     text = "${action.defaultTime}秒 / 休息${action.restTime}秒",
                     style = MaterialTheme.typography.caption,
-                    color = Color.Gray
+                    color = AppTheme.colors.inkSub
                 )
+                if (action.stepsText.isNotBlank()) {
+                    Text(
+                        text = action.stepsText,
+                        style = MaterialTheme.typography.caption,
+                        color = AppTheme.colors.inkSub,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             // 操作按钮
             if (!isDragging) {
-                IconButton(onClick = onEditClick, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.Edit, contentDescription = "编辑", tint = Color.Gray, modifier = Modifier.size(18.dp))
+                IconButton(onClick = onEditClick, modifier = Modifier.size(AppDimens.s8)) {
+                    Icon(AppIcons.Edit, contentDescription = "编辑", tint = AppTheme.colors.inkSub, modifier = Modifier.size(AppDimens.s4))
                 }
-                IconButton(onClick = onDeleteClick, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.Delete, contentDescription = "删除", tint = Color.Gray, modifier = Modifier.size(18.dp))
+                IconButton(onClick = onDeleteClick, modifier = Modifier.size(AppDimens.s8)) {
+                    Icon(AppIcons.Delete, contentDescription = "删除", tint = AppTheme.colors.inkSub, modifier = Modifier.size(AppDimens.s4))
                 }
             }
         }
@@ -709,28 +776,43 @@ fun ActionEditScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (isEditing) "编辑动作" else "添加动作") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "返回"
-                        )
-                    }
-                }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppTheme.colors.background)
+            .padding(horizontal = AppDimens.screenPadding),
+        verticalArrangement = Arrangement.spacedBy(AppDimens.s4)
+    ) {
+        // 头部行：返回 + 标题（外层 Column 已有 screenPadding，这里只补垂直间距）
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = AppDimens.s2),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBackClick) {
+                AppIcon(
+                    imageVector = AppIcons.Back,
+                    contentDescription = "返回",
+                    tint = AppTheme.colors.ink
+                )
+            }
+            Text(
+                text = if (isEditing) "编辑动作" else "添加动作",
+                style = MaterialTheme.typography.subtitle1,
+                fontWeight = AppTypeWeight.emphasis,
+                color = AppTheme.colors.ink,
+                modifier = Modifier.weight(1f)
             )
         }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+
+        LiteCard {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(AppDimens.s4),
+                verticalArrangement = Arrangement.spacedBy(AppDimens.s3)
+            ) {
             // 动作名称
             OutlinedTextField(
                 value = name,
@@ -758,14 +840,14 @@ fun ActionEditScreen(
                 label = { Text("步骤说明") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
+                    .height(AppDimens.chartHeight),
                 maxLines = 5
             )
 
             // 默认时长和休息时长
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(AppDimens.s4)
             ) {
                 OutlinedTextField(
                     value = defaultTime,
@@ -809,6 +891,7 @@ fun ActionEditScreen(
                     style = MaterialTheme.typography.caption
                 )
             }
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -850,7 +933,8 @@ fun ActionEditScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = AppShapes.button
             ) {
                 Text("保存")
             }

@@ -1,5 +1,13 @@
 package pages
+import ui.AppIcon
+import ui.AppIcons
+import ui.IconBadge
+import ui.LiteCard
+import ui.PageHeader
+import ui.SectionHeader
+import ui.theme.*
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
@@ -53,16 +62,38 @@ fun SettingsScreen(
 
     // 通知设置状态
     var reminderEnabled by remember { mutableStateOf(false) }
-    var reminderHour by remember { mutableStateOf(9) }
+    var reminderHour by remember { mutableStateOf(21) }
     var reminderMinute by remember { mutableStateOf(0) }
 
     // 训练设置状态
     var autoRestEnabled by remember { mutableStateOf(true) }
-    var soundEnabled by remember { mutableStateOf(true) }
-    var vibrationEnabled by remember { mutableStateOf(false) }
+    var soundEnabled by remember { mutableStateOf(TrainingFeedback.isSoundEnabled()) }
+    var vibrationEnabled by remember { mutableStateOf(TrainingFeedback.isVibrationEnabled()) }
+    var voiceEnabled by remember { mutableStateOf(TrainingFeedback.isVoiceEnabled()) }
+    var tickEnabled by remember { mutableStateOf(TrainingFeedback.isTickEnabled()) }
 
-    // 深色模式状态
-    var isDarkMode by remember { mutableStateOf(false) }
+    // 深色模式状态：从持久化偏好读取，与 App 入口保持一致
+    var isDarkMode by remember { mutableStateOf(ThemePreference.isDark()) }
+
+    // 康复计划状态
+    var planSummary by remember { mutableStateOf("未导入") }
+    var isPlanBusy by remember { mutableStateOf(false) }
+
+    fun loadPlanSummary() {
+        scope.launch {
+            planSummary = withContext(Dispatchers.Default) {
+                runCatching {
+                    val state = data.plan.PlanRepository.loadState() ?: return@runCatching "未导入"
+                    val task = data.plan.PlanRepository.todayTask()
+                    when {
+                        task == null -> "已导入 · ${state.startDate} 开始"
+                        task.finished -> "8 周计划已完成"
+                        else -> "${state.startDate} 开始 · ${data.plan.PlanScheduler.reminderText(task)}"
+                    }
+                }.getOrElse { "未导入" }
+            }
+        }
+    }
 
     // 加载统计数据
     fun loadStats() {
@@ -77,72 +108,188 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         loadStats()
+        loadPlanSummary()
+        // 提醒开关与时间以平台侧（AlarmManager）为准，避免 UI 状态与真实闹钟不一致
+        val config = data.plan.ReminderController.current()
+        reminderEnabled = config.enabled
+        reminderHour = config.hour
+        reminderMinute = config.minute
+        soundEnabled = TrainingFeedback.isSoundEnabled()
+        vibrationEnabled = TrainingFeedback.isVibrationEnabled()
+        voiceEnabled = TrainingFeedback.isVoiceEnabled()
+        tickEnabled = TrainingFeedback.isTickEnabled()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("设置") }
-            )
-        }
-    ) { innerPadding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppTheme.colors.background)
+    ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier = Modifier.fillMaxSize()
         ) {
-            // 统计数据部分
+            // 页头：标题 + 头像容器
             item {
-                SettingsSection(title = "数据统计") {
-                    SettingsItem(
-                        icon = "📁",
-                        title = "训练分组",
-                        subtitle = "$totalGroups 个",
-                        onClick = { }
-                    )
-                    SettingsItem(
-                        icon = "🏋️",
-                        title = "训练动作",
-                        subtitle = "$totalActions 个",
-                        onClick = { }
-                    )
-                    SettingsItem(
-                        icon = "✅",
-                        title = "打卡记录",
-                        subtitle = "$totalCheckins 条",
-                        onClick = { }
-                    )
+                PageHeader(
+                    title = "设置",
+                    trailing = {
+                        IconBadge(
+                            icon = AppIcons.Person,
+                            contentDescription = "账号"
+                        )
+                    }
+                )
+            }
+
+            // 训练设置
+            item { SectionHeader(text = "训练设置") }
+            item {
+                LiteCard(modifier = Modifier.padding(horizontal = AppDimens.screenPadding)) {
+                    Column(modifier = Modifier.padding(horizontal = AppDimens.s3, vertical = AppDimens.s1)) {
+                        SettingsSwitchRow(
+                            icon = AppIcons.Clock,
+                            title = "自动休息",
+                            subtitle = "动作完成后自动开始休息计时",
+                            checked = autoRestEnabled,
+                            onCheckedChange = { autoRestEnabled = it }
+                        )
+                        SettingsSwitchRow(
+                            icon = AppIcons.Bell,
+                            title = "每日提醒",
+                            subtitle = if (reminderEnabled)
+                                "每天 ${reminderHour.toString().padStart(2, '0')}:${reminderMinute.toString().padStart(2, '0')} 提醒训练"
+                            else "每天定时提醒您完成训练",
+                            checked = reminderEnabled,
+                            onCheckedChange = { enabled ->
+                                reminderEnabled = enabled
+                                data.plan.ReminderController.setEnabled(enabled, reminderHour, reminderMinute)
+                            }
+                        )
+                        if (reminderEnabled) {
+                            SettingsRow(
+                                icon = AppIcons.Clock,
+                                title = "提醒时间",
+                                subtitle = "${reminderHour.toString().padStart(2, '0')}:${reminderMinute.toString().padStart(2, '0')}",
+                                onClick = { showTimePickerDialog = true }
+                            )
+                        }
+                        SettingsSwitchRow(
+                            icon = AppIcons.Sound,
+                            title = "声音提示",
+                            subtitle = "开始 / 暂停 / 动作切换 / 完成时播放提示音",
+                            checked = soundEnabled,
+                            onCheckedChange = { enabled ->
+                                soundEnabled = enabled
+                                TrainingFeedback.setSoundEnabled(enabled)
+                            }
+                        )
+                        SettingsSwitchRow(
+                            icon = AppIcons.Voice,
+                            title = "倒数语音播报",
+                            subtitle = "最后 5 秒用语音读出 5 / 4 / 3 / 2 / 1（跟随媒体音量）",
+                            checked = voiceEnabled,
+                            onCheckedChange = { enabled ->
+                                voiceEnabled = enabled
+                                TrainingFeedback.setVoiceEnabled(enabled)
+                            }
+                        )
+                        SettingsSwitchRow(
+                            icon = AppIcons.Clock,
+                            title = "倒计时秒针声",
+                            subtitle = "倒计时全程每秒一声轻滴答",
+                            checked = tickEnabled,
+                            onCheckedChange = { enabled ->
+                                tickEnabled = enabled
+                                TrainingFeedback.setTickEnabled(enabled)
+                            }
+                        )
+                        SettingsSwitchRow(
+                            icon = AppIcons.Vibrate,
+                            title = "震动反馈",
+                            subtitle = "与提示音同步震动，静音时也能感知",
+                            checked = vibrationEnabled,
+                            onCheckedChange = { enabled ->
+                                vibrationEnabled = enabled
+                                TrainingFeedback.setVibrationEnabled(enabled)
+                            },
+                            isLast = true
+                        )
+                    }
                 }
             }
 
-            // 云同步部分
-            if (authService != null) {
-                item {
-                    val isLoggedIn = authService.isLoggedIn
-                    val userEmail = authService.userEmail
+            // 训练计划
+            item { SectionHeader(text = "训练计划") }
+            item {
+                LiteCard(modifier = Modifier.padding(horizontal = AppDimens.screenPadding)) {
+                    Column(modifier = Modifier.padding(horizontal = AppDimens.s3, vertical = AppDimens.s1)) {
+                        SettingsRow(
+                            icon = AppIcons.Calendar,
+                            title = "当前计划",
+                            subtitle = planSummary,
+                            onClick = { loadPlanSummary() }
+                        )
+                        SettingsRow(
+                            icon = AppIcons.Package,
+                            title = if (isPlanBusy) "处理中…" else "导入 8 周康复计划",
+                            subtitle = "按阶段生成分组与动作，自动区分训练日与休息日",
+                            onClick = {
+                                if (isPlanBusy) return@SettingsRow
+                                isPlanBusy = true
+                                scope.launch {
+                                    runCatching { data.plan.PlanRepository.importRehabPlan() }
+                                        .onSuccess {
+                                            loadStats(); loadPlanSummary()
+                                            // 导入计划时自动开启每日提醒（默认 21:00）
+                                            if (!reminderEnabled) {
+                                                reminderEnabled = true
+                                                data.plan.ReminderController.setEnabled(true, reminderHour, reminderMinute)
+                                            }
+                                        }
+                                        .onFailure { planSummary = "导入失败：${it.message}" }
+                                    isPlanBusy = false
+                                }
+                            }
+                        )
+                        SettingsRow(
+                            icon = AppIcons.Delete,
+                            title = "清除康复计划",
+                            subtitle = "仅删除计划生成的分组与动作，打卡记录保留",
+                            onClick = {
+                                if (isPlanBusy) return@SettingsRow
+                                isPlanBusy = true
+                                scope.launch {
+                                    runCatching { data.plan.PlanRepository.deletePlan() }
+                                    loadStats()
+                                    loadPlanSummary()
+                                    isPlanBusy = false
+                                }
+                            },
+                            isDestructive = true,
+                            isLast = true
+                        )
+                    }
+                }
+            }
 
-                    SettingsSection(title = "☁️ 云同步") {
-                        if (!isLoggedIn) {
-                            SettingsItem(
-                                icon = "🔑",
-                                title = "未登录",
-                                subtitle = "登录后可同步数据到云端",
-                                onClick = { onLogout?.invoke() }
-                            )
-                        } else {
-                            SettingsItem(
-                                icon = "👤",
+            // 数据与同步
+            item { SectionHeader(text = "数据与同步") }
+            item {
+                LiteCard(modifier = Modifier.padding(horizontal = AppDimens.screenPadding)) {
+                    Column(modifier = Modifier.padding(horizontal = AppDimens.s3, vertical = AppDimens.s1)) {
+                        if (authService != null && authService.isLoggedIn) {
+                            SettingsRow(
+                                icon = AppIcons.Person,
                                 title = "账号",
-                                subtitle = userEmail.ifEmpty { "未知" },
-                                onClick = { }
+                                subtitle = authService.userEmail.ifEmpty { "未知" }
                             )
-                            SettingsItem(
-                                icon = if (isSyncing) "🔄" else "📤",
+                            SettingsRow(
+                                icon = if (isSyncing) AppIcons.Sync else AppIcons.Upload,
                                 title = if (isSyncing) "同步中..." else "手动同步",
                                 subtitle = when {
                                     isSyncing -> "正在上传下载数据"
-                                    syncSuccess -> "✅ 上次同步成功"
-                                    syncError != null -> "❌ $syncError"
+                                    syncSuccess -> "上次同步成功"
+                                    syncError != null -> "$syncError"
                                     else -> "点击立即同步数据到云端"
                                 },
                                 onClick = {
@@ -173,148 +320,134 @@ fun SettingsScreen(
                                     }
                                 }
                             )
-                            SettingsItem(
-                                icon = "🔗",
-                                title = "服务器地址",
-                                subtitle = ServerConfig.baseUrl,
-                                onClick = { }
-                            )
-                            // 退出登录按钮
-                            SettingsItem(
-                                icon = "🚪",
-                                title = "退出登录",
-                                subtitle = "退出后本地数据保留",
-                                onClick = { showLogoutDialog = true },
-                                isDestructive = true
+                        } else {
+                            SettingsRow(
+                                icon = AppIcons.Key,
+                                title = "未登录",
+                                subtitle = "登录后可同步数据到云端"
                             )
                         }
-                    }
-                }
-            }
-
-            // 外观设置部分
-            item {
-                SettingsSection(title = "外观") {
-                    SettingsSwitchItem(
-                        icon = "🌙",
-                        title = "深色模式",
-                        subtitle = if (isDarkMode) "已开启" else "未开启",
-                        checked = isDarkMode,
-                        onCheckedChange = { enabled ->
-                            isDarkMode = enabled
-                            onThemeChange?.invoke(enabled)
-                        }
-                    )
-                }
-            }
-
-            // 通知设置部分
-            item {
-                SettingsSection(title = "通知") {
-                    SettingsSwitchItem(
-                        icon = "🔔",
-                        title = "训练提醒",
-                        subtitle = if (reminderEnabled) "每天 ${reminderHour.toString().padStart(2, '0')}:${reminderMinute.toString().padStart(2, '0')} 提醒" else "每天提醒您完成训练",
-                        checked = reminderEnabled,
-                        onCheckedChange = { enabled ->
-                            reminderEnabled = enabled
-                        }
-                    )
-                    if (reminderEnabled) {
-                        SettingsItem(
-                            icon = "🕐",
-                            title = "提醒时间",
-                            subtitle = "${reminderHour.toString().padStart(2, '0')}:${reminderMinute.toString().padStart(2, '0')}",
-                            onClick = { showTimePickerDialog = true }
+                        SettingsRow(
+                            icon = AppIcons.Link,
+                            title = "服务器地址",
+                            subtitle = ServerConfig.baseUrl
+                        )
+                        SettingsRow(
+                            icon = AppIcons.Upload,
+                            title = "导出数据",
+                            subtitle = "将数据导出为 JSON 格式",
+                            onClick = {
+                                isExporting = true
+                                scope.launch {
+                                    exportJson = withContext(Dispatchers.Default) {
+                                        repository.exportDataAsJson()
+                                    }
+                                    isExporting = false
+                                    showExportDialog = true
+                                }
+                            }
+                        )
+                        SettingsRow(
+                            icon = AppIcons.Download,
+                            title = "导入数据",
+                            subtitle = "从 JSON 格式导入数据",
+                            onClick = { showImportDialog = true }
+                        )
+                        SettingsRow(
+                            icon = AppIcons.Delete,
+                            title = "清除数据",
+                            subtitle = "删除所有训练记录和分组",
+                            onClick = { showClearDataDialog = true },
+                            isDestructive = true,
+                            isLast = true
                         )
                     }
                 }
             }
 
-            // 训练设置部分
+            // 外观
+            item { SectionHeader(text = "外观") }
             item {
-                SettingsSection(title = "训练") {
-                    SettingsSwitchItem(
-                        icon = "⏱️",
-                        title = "自动休息",
-                        subtitle = "动作完成后自动开始休息计时",
-                        checked = autoRestEnabled,
-                        onCheckedChange = { autoRestEnabled = it }
-                    )
-                    SettingsSwitchItem(
-                        icon = "🔊",
-                        title = "声音提示",
-                        subtitle = "计时器开始和结束时播放声音",
-                        checked = soundEnabled,
-                        onCheckedChange = { soundEnabled = it }
-                    )
-                    SettingsSwitchItem(
-                        icon = "📳",
-                        title = "震动反馈",
-                        subtitle = "计时器结束时震动提醒",
-                        checked = vibrationEnabled,
-                        onCheckedChange = { vibrationEnabled = it }
-                    )
+                LiteCard(modifier = Modifier.padding(horizontal = AppDimens.screenPadding)) {
+                    Column(modifier = Modifier.padding(horizontal = AppDimens.s3, vertical = AppDimens.s1)) {
+                        SettingsSwitchRow(
+                            icon = AppIcons.DarkMode,
+                            title = "深色模式",
+                            subtitle = if (isDarkMode) "已开启" else "未开启",
+                            checked = isDarkMode,
+                            onCheckedChange = { enabled ->
+                                isDarkMode = enabled
+                                onThemeChange?.invoke(enabled)
+                            },
+                            isLast = true
+                        )
+                    }
                 }
             }
 
-            // 数据管理部分
+            // 关于
+            item { SectionHeader(text = "关于") }
             item {
-                SettingsSection(title = "数据管理") {
-                    SettingsItem(
-                        icon = "📤",
-                        title = "导出数据",
-                        subtitle = "将数据导出为 JSON 格式",
-                        onClick = {
-                            isExporting = true
-                            scope.launch {
-                                exportJson = withContext(Dispatchers.Default) {
-                                    repository.exportDataAsJson()
-                                }
-                                isExporting = false
-                                showExportDialog = true
+                LiteCard(modifier = Modifier.padding(horizontal = AppDimens.screenPadding)) {
+                    Column(modifier = Modifier.padding(horizontal = AppDimens.s3, vertical = AppDimens.s1)) {
+                        SettingsRow(
+                            icon = AppIcons.Info,
+                            title = "关于应用",
+                            subtitle = "版本 1.0.0",
+                            onClick = { showAboutDialog = true }
+                        )
+                        SettingsRow(
+                            icon = AppIcons.Celebrate,
+                            title = "评价我们",
+                            subtitle = "在应用商店留下评价",
+                            onClick = { },
+                            isLast = true
+                        )
+                    }
+                }
+            }
+
+            // 退出登录（独立危险操作卡）
+            if (authService != null) {
+                item {
+                    Spacer(modifier = Modifier.height(AppDimens.s2))
+                    LiteCard(
+                        modifier = Modifier.padding(horizontal = AppDimens.screenPadding),
+                        onClick = { showLogoutDialog = true }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(
+                                horizontal = AppDimens.s3,
+                                vertical = AppDimens.s3
+                            ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconBadge(
+                                icon = AppIcons.Logout,
+                                contentDescription = null,
+                                tint = AppTheme.colors.danger,
+                                container = AppTheme.colors.dangerSoft
+                            )
+                            Spacer(modifier = Modifier.width(AppDimens.s3))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "退出登录",
+                                    style = MaterialTheme.typography.body1,
+                                    fontWeight = AppTypeWeight.medium,
+                                    color = AppTheme.colors.danger
+                                )
+                                Text(
+                                    text = "退出后本地数据保留",
+                                    style = MaterialTheme.typography.caption,
+                                    color = AppTheme.colors.inkSub
+                                )
                             }
                         }
-                    )
-                    SettingsItem(
-                        icon = "📥",
-                        title = "导入数据",
-                        subtitle = "从 JSON 格式导入数据",
-                        onClick = {
-                            showImportDialog = true
-                        }
-                    )
-                    SettingsItem(
-                        icon = "🗑️",
-                        title = "清除数据",
-                        subtitle = "删除所有训练记录和分组",
-                        onClick = { showClearDataDialog = true },
-                        isDestructive = true
-                    )
+                    }
                 }
             }
 
-            // 关于部分
-            item {
-                SettingsSection(title = "关于") {
-                    SettingsItem(
-                        icon = "ℹ️",
-                        title = "关于应用",
-                        subtitle = "版本 1.0.0",
-                        onClick = { showAboutDialog = true }
-                    )
-                    SettingsItem(
-                        icon = "⭐",
-                        title = "评价我们",
-                        subtitle = "在应用商店留下评价",
-                        onClick = { }
-                    )
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
+            item { Spacer(modifier = Modifier.height(AppDimens.s8)) }
         }
     }
 
@@ -328,11 +461,13 @@ fun SettingsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "🏋️",
-                        style = MaterialTheme.typography.h1
+                    AppIcon(
+                        imageVector = AppIcons.Training,
+                        contentDescription = null,
+                        size = AppDimens.iconHero,
+                        tint = AppTheme.colors.brand
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.s4))
                     Text(
                         text = "版本 1.0.0",
                         style = MaterialTheme.typography.body1
@@ -340,7 +475,7 @@ fun SettingsScreen(
                     Text(
                         text = "一款智能健身任务管理应用",
                         style = MaterialTheme.typography.body2,
-                        color = Color.Gray
+                        color = AppTheme.colors.inkSub
                     )
                 }
             },
@@ -360,27 +495,27 @@ fun SettingsScreen(
             text = {
                 Column {
                     Text("确定要删除以下所有数据吗？此操作无法撤销。")
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.s2))
                     Text(
                         text = "• $totalGroups 个训练分组",
                         style = MaterialTheme.typography.body2,
-                        color = Color.Gray
+                        color = AppTheme.colors.inkSub
                     )
                     Text(
                         text = "• $totalActions 个训练动作",
                         style = MaterialTheme.typography.body2,
-                        color = Color.Gray
+                        color = AppTheme.colors.inkSub
                     )
                     Text(
                         text = "• $totalCheckins 条打卡记录",
                         style = MaterialTheme.typography.body2,
-                        color = Color.Gray
+                        color = AppTheme.colors.inkSub
                     )
                 }
             },
             confirmButton = {
                 if (isClearing) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(AppDimens.s6))
                 } else {
                     TextButton(
                         onClick = {
@@ -396,7 +531,7 @@ fun SettingsScreen(
                             }
                         }
                     ) {
-                        Text("确定", color = Color.Red)
+                        Text("确定", color = AppTheme.colors.danger)
                     }
                 }
             },
@@ -422,19 +557,19 @@ fun SettingsScreen(
                         text = "数据已导出为 JSON 格式。",
                         style = MaterialTheme.typography.body2
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.s2))
                     Text(
                         text = "共 $totalGroups 个分组、$totalActions 个动作、$totalCheckins 条记录",
                         style = MaterialTheme.typography.body2,
-                        color = Color.Gray
+                        color = AppTheme.colors.inkSub
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.s4))
                     OutlinedTextField(
                         value = exportJson,
                         onValueChange = {},
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp),
+                            .height(AppDimens.progressRing),
                         readOnly = true
                     )
                 }
@@ -450,7 +585,7 @@ fun SettingsScreen(
     // 导入数据对话框
     if (showImportDialog) {
         AlertDialog(
-            onDismissRequest = { 
+            onDismissRequest = {
                 showImportDialog = false
                 importJson = ""
                 importResult = null
@@ -462,34 +597,34 @@ fun SettingsScreen(
                         text = "请粘贴 JSON 数据：",
                         style = MaterialTheme.typography.body2
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.s2))
                     OutlinedTextField(
                         value = importJson,
                         onValueChange = { importJson = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(150.dp),
+                            .height(AppDimens.progressRingSmall),
                         placeholder = { Text("粘贴 JSON 数据...") }
                     )
-                    
+
                     if (importResult != null) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(AppDimens.s4))
                         if (importResult!!.success) {
                             Text(
-                                text = "✅ 导入成功！",
+                                text = "导入成功！",
                                 style = MaterialTheme.typography.body1,
-                                color = Color(0xFF4CAF50)
+                                color = AppTheme.colors.success
                             )
                             Text(
                                 text = "分组: ${importResult!!.groupsImported}, 动作: ${importResult!!.actionsImported}, 打卡: ${importResult!!.checkinsImported}",
                                 style = MaterialTheme.typography.body2,
-                                color = Color.Gray
+                                color = AppTheme.colors.inkSub
                             )
                         } else {
                             Text(
-                                text = "❌ 导入失败: ${importResult!!.errorMessage}",
+                                text = "导入失败: ${importResult!!.errorMessage}",
                                 style = MaterialTheme.typography.body1,
-                                color = Color.Red
+                                color = AppTheme.colors.danger
                             )
                         }
                     }
@@ -497,7 +632,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 if (isImporting) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(AppDimens.s6))
                 } else {
                     TextButton(
                         onClick = {
@@ -521,7 +656,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { 
+                TextButton(onClick = {
                     showImportDialog = false
                     importJson = ""
                     importResult = null
@@ -540,6 +675,7 @@ fun SettingsScreen(
             onConfirm = { hour, minute ->
                 reminderHour = hour
                 reminderMinute = minute
+                data.plan.ReminderController.setEnabled(reminderEnabled, hour, minute)
                 showTimePickerDialog = false
             },
             onDismiss = { showTimePickerDialog = false }
@@ -574,7 +710,7 @@ fun SettingsScreen(
                         onLogout?.invoke()
                     }
                 ) {
-                    Text("退出", color = Color.Red)
+                    Text("退出", color = AppTheme.colors.danger)
                 }
             },
             dismissButton = {
@@ -586,93 +722,120 @@ fun SettingsScreen(
     }
 }
 
+// 设置行：图标容器 + 标题/副标题 + 可选右侧内容，行间细分隔线
 @Composable
-fun SettingsSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.subtitle2,
-            color = MaterialTheme.colors.primary,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-        content()
-        Spacer(modifier = Modifier.height(8.dp))
-    }
-}
-
-@Composable
-fun SettingsItem(
-    icon: String,
+fun SettingsRow(
+    icon: ImageVector,
     title: String,
     subtitle: String,
-    onClick: () -> Unit,
-    isDestructive: Boolean = false
+    onClick: (() -> Unit)? = null,
+    isDestructive: Boolean = false,
+    isLast: Boolean = false
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = icon,
-            style = MaterialTheme.typography.h6
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.body1,
-                color = if (isDestructive) Color.Red else Color.Unspecified
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+                )
+                .padding(vertical = AppDimens.s3),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val titleColor = if (isDestructive) AppTheme.colors.danger else AppTheme.colors.ink
+            IconBadge(
+                icon = icon,
+                contentDescription = null,
+                tint = if (isDestructive) AppTheme.colors.danger else AppTheme.colors.brandStrong,
+                container = if (isDestructive) AppTheme.colors.dangerSoft else AppTheme.colors.brandSoft
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.body2,
-                color = Color.Gray
+            Spacer(modifier = Modifier.width(AppDimens.s3))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.body1,
+                    fontWeight = AppTypeWeight.medium,
+                    color = titleColor
+                )
+                Spacer(modifier = Modifier.height(AppDimens.s1))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.caption,
+                    color = AppTheme.colors.inkSub
+                )
+            }
+            if (onClick != null) {
+                AppIcon(
+                    imageVector = AppIcons.Chevron,
+                    contentDescription = null,
+                    tint = AppTheme.colors.inkMuted,
+                    size = AppDimens.iconSmall
+                )
+            }
+        }
+        if (!isLast) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(AppDimens.divider)
+                    .background(AppTheme.colors.outline)
             )
         }
     }
 }
 
 @Composable
-fun SettingsSwitchItem(
-    icon: String,
+fun SettingsSwitchRow(
+    icon: ImageVector,
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    isLast: Boolean = false
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = icon,
-            style = MaterialTheme.typography.h6
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.body1
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.body2,
-                color = Color.Gray
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onCheckedChange(!checked) }
+                .padding(vertical = AppDimens.s3),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconBadge(icon = icon, contentDescription = null)
+            Spacer(modifier = Modifier.width(AppDimens.s3))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.body1,
+                    fontWeight = AppTypeWeight.medium,
+                    color = AppTheme.colors.ink
+                )
+                Spacer(modifier = Modifier.height(AppDimens.s1))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.caption,
+                    color = AppTheme.colors.inkSub
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = AppTheme.colors.onBrand,
+                    checkedTrackColor = AppTheme.colors.brand,
+                    uncheckedThumbColor = AppTheme.colors.surface,
+                    uncheckedTrackColor = AppTheme.colors.surfaceAlt
+                )
             )
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
+        if (!isLast) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(AppDimens.divider)
+                    .background(AppTheme.colors.outline)
+            )
+        }
     }
 }
 
@@ -697,43 +860,43 @@ fun TimePickerDialog(
             ) {
                 // 小时选择
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { 
-                        selectedHour = (selectedHour + 1) % 24 
+                    IconButton(onClick = {
+                        selectedHour = (selectedHour + 1) % 24
                     }) {
-                        Text("▲", style = MaterialTheme.typography.h5)
+                        AppIcon(AppIcons.ChevronUp, "增加", tint = AppTheme.colors.brand, size = AppDimens.icon)
                     }
                     Text(
                         text = selectedHour.toString().padStart(2, '0'),
                         style = MaterialTheme.typography.h3
                     )
-                    IconButton(onClick = { 
-                        selectedHour = if (selectedHour > 0) selectedHour - 1 else 23 
+                    IconButton(onClick = {
+                        selectedHour = if (selectedHour > 0) selectedHour - 1 else 23
                     }) {
-                        Text("▼", style = MaterialTheme.typography.h5)
+                        AppIcon(AppIcons.ChevronDown, "减少", tint = AppTheme.colors.brand, size = AppDimens.icon)
                     }
                 }
-                
+
                 Text(
                     text = " : ",
                     style = MaterialTheme.typography.h3,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    modifier = Modifier.padding(horizontal = AppDimens.s2)
                 )
-                
+
                 // 分钟选择
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { 
-                        selectedMinute = (selectedMinute + 5) % 60 
+                    IconButton(onClick = {
+                        selectedMinute = (selectedMinute + 5) % 60
                     }) {
-                        Text("▲", style = MaterialTheme.typography.h5)
+                        AppIcon(AppIcons.ChevronUp, "增加", tint = AppTheme.colors.brand, size = AppDimens.icon)
                     }
                     Text(
                         text = selectedMinute.toString().padStart(2, '0'),
                         style = MaterialTheme.typography.h3
                     )
-                    IconButton(onClick = { 
-                        selectedMinute = if (selectedMinute >= 5) selectedMinute - 5 else 55 
+                    IconButton(onClick = {
+                        selectedMinute = if (selectedMinute >= 5) selectedMinute - 5 else 55
                     }) {
-                        Text("▼", style = MaterialTheme.typography.h5)
+                        AppIcon(AppIcons.ChevronDown, "减少", tint = AppTheme.colors.brand, size = AppDimens.icon)
                     }
                 }
             }

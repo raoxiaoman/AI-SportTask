@@ -1,4 +1,8 @@
 package pages
+import ui.AppIcon
+import ui.AppIcons
+import ui.theme.*
+
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
@@ -51,25 +55,27 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 32.dp),
+                .padding(horizontal = AppDimens.s8),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             // 标题图标
-            Text(
-                text = "🏋️",
-                style = MaterialTheme.typography.h3
+            AppIcon(
+                imageVector = AppIcons.Training,
+                contentDescription = null,
+                size = AppDimens.iconHero,
+                tint = AppTheme.colors.brand
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s2))
 
             Text(
                 text = "AI SportTask",
                 style = MaterialTheme.typography.h4,
-                fontWeight = FontWeight.Bold
+                fontWeight = AppTypeWeight.emphasis
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s1))
 
             Text(
                 text = "运动训练打卡助手",
@@ -77,7 +83,7 @@ fun LoginScreen(
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s10))
 
             // 邮箱输入
             OutlinedTextField(
@@ -92,7 +98,7 @@ fun LoginScreen(
                 enabled = authState !is cloud.AuthService.AuthState.Loading
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s3))
 
             // 密码输入
             OutlinedTextField(
@@ -110,7 +116,7 @@ fun LoginScreen(
 
             // 错误提示
             if (errorMessage != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.s2))
                 Text(
                     text = errorMessage!!,
                     color = MaterialTheme.colors.error,
@@ -118,7 +124,7 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s6))
 
             // 登录/注册按钮
             Button(
@@ -134,14 +140,14 @@ fun LoginScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(AppDimens.s12),
                 enabled = authState !is cloud.AuthService.AuthState.Loading
             ) {
                 if (authState is cloud.AuthService.AuthState.Loading) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colors.onPrimary,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp)
+                        strokeWidth = AppDimens.hairline,
+                        modifier = Modifier.size(AppDimens.s6)
                     )
                 } else {
                     Text(
@@ -151,7 +157,7 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(AppDimens.s4))
 
             // 切换登录/注册
             TextButton(

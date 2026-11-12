@@ -25,7 +25,8 @@ class StatsFlowTest {
             "2025-05-23" to listOf(DailyRecord(1200))
         )
 
-        val weekDates = (6 downTo 0).map { daysAgo("2025-05-26", it) }
+        // 覆盖 5/18–5/24，与下面注释中的日期对应
+        val weekDates = (6 downTo 0).map { daysAgo("2025-05-24", it) }
         val filled = weekDates.map { date ->
             val records = rawData[date] ?: emptyList()
             DailyStat(

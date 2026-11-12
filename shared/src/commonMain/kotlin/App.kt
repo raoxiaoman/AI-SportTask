@@ -1,166 +1,181 @@
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.*
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.ImageVector
 import data.Achievement
 import data.AchievementManager
 import data.SportTaskRepository
 import data.remote.AuthService
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import pages.*
 import ui.AchievementDialog
+import ui.AppIcon
+import ui.AppIcons
+import ui.SystemBarAppearanceEffect
+import ui.theme.*
+
+private data class NavItem(val label: String, val icon: ImageVector)
 
 @Composable
 fun App() {
-    // 认证服务 — 全局单例
-    val authService = remember { AuthService() }
+    // 主题偏好在入口读取并持久化，切换后重启仍保持
+    var isDarkMode by remember { mutableStateOf(ThemePreference.isDark()) }
 
-    // 登录状态
-    var isLoggedIn by remember { mutableStateOf(false) }
-    var isCheckingLogin by remember { mutableStateOf(true) }
-
-    // 检查本地是否已有登录态
-    LaunchedEffect(Unit) {
-        isLoggedIn = authService.restoreSession()
-        isCheckingLogin = false
-    }
-
-    if (isCheckingLogin) {
-        // 启动加载页
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = androidx.compose.ui.Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
-    if (!isLoggedIn) {
-        LoginScreen(
-            authService = authService,
-            onLoginSuccess = {
-                isLoggedIn = true
-            }
+    SportTaskTheme(darkTheme = isDarkMode) {
+        // 状态栏/导航栏颜色跟随主题，图标深浅随主题切换
+        SystemBarAppearanceEffect(
+            isDark = isDarkMode,
+            statusBarColor = AppTheme.colors.background,
+            navigationBarColor = AppTheme.colors.surface
         )
-        return
-    }
+        val authService = remember { AuthService() }
+        // 登录态同步读取，首帧直接渲染真实页面，避免冷启动空白转圈
+        var isLoggedIn by remember { mutableStateOf(authService.restoreSession()) }
 
-    // ===== 已登录，显示主界面 =====
-    MainAppScreen(
-        authService = authService,
-        onLogout = {
-            authService.logout()
-            isLoggedIn = false
+        if (!isLoggedIn) {
+            LoginScreen(
+                authService = authService,
+                onLoginSuccess = { isLoggedIn = true }
+            )
+        } else {
+            MainAppScreen(
+                authService = authService,
+                onThemeChange = { enabled ->
+                    ThemePreference.setDark(enabled)
+                    isDarkMode = enabled
+                },
+                onLogout = {
+                    authService.logout()
+                    isLoggedIn = false
+                }
+            )
         }
-    )
+    }
 }
 
 /**
- * 主应用界面（登录后）
+ * 主应用界面（登录后）。
+ * 顶部/底部一律使用中性色，品牌色只出现在选中态、进度与主操作上，
+ * 蓝色覆盖面积控制在 10% 以内。
  */
 @Composable
 fun MainAppScreen(
     authService: AuthService,
+    onThemeChange: (Boolean) -> Unit,
     onLogout: () -> Unit
 ) {
-    var isDarkMode by remember { mutableStateOf(false) }
-
-    // 成就系统状态
     var showAchievements by remember { mutableStateOf(false) }
     var newAchievements by remember { mutableStateOf<List<Achievement>>(emptyList()) }
+    var selectedIndex by remember { mutableStateOf(0) }
+    // 训练执行页为沉浸式：隐藏底部导航
+    var immersive by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val repository = remember { SportTaskRepository }
 
-    val colors = if (isDarkMode) {
-        darkColors(
-            primary = androidx.compose.ui.graphics.Color(0xFF90CAF9),
-            secondary = androidx.compose.ui.graphics.Color(0xFFCE93D8),
-            background = androidx.compose.ui.graphics.Color(0xFF121212),
-            surface = androidx.compose.ui.graphics.Color(0xFF1E1E1E),
-            onPrimary = androidx.compose.ui.graphics.Color.Black,
-            onSecondary = androidx.compose.ui.graphics.Color.Black,
-            onBackground = androidx.compose.ui.graphics.Color.White,
-            onSurface = androidx.compose.ui.graphics.Color.White
-        )
-    } else {
-        lightColors(
-            primary = androidx.compose.ui.graphics.Color(0xFF1976D2),
-            secondary = androidx.compose.ui.graphics.Color(0xFF7B1FA2),
-            background = androidx.compose.ui.graphics.Color(0xFFFAFAFA),
-            surface = androidx.compose.ui.graphics.Color.White,
-            onPrimary = androidx.compose.ui.graphics.Color.White,
-            onSecondary = androidx.compose.ui.graphics.Color.White,
-            onBackground = androidx.compose.ui.graphics.Color.Black,
-            onSurface = androidx.compose.ui.graphics.Color.Black
-        )
-    }
+    val navItems = listOf(
+        NavItem("训练", AppIcons.Training),
+        NavItem("分组", AppIcons.Groups),
+        NavItem("打卡", AppIcons.Checkin),
+        NavItem("统计", AppIcons.Stats),
+        NavItem("设置", AppIcons.Settings)
+    )
 
-    MaterialTheme(colors = colors) {
-        val navTitles = listOf("训练", "分组", "打卡", "统计", "设置")
-
-        var selectedIndex by remember { mutableStateOf(0) }
-
-        Scaffold(
-            bottomBar = {
-                BottomNavigation {
-                    navTitles.forEachIndexed { index, title ->
+    Scaffold(
+        backgroundColor = AppTheme.colors.background,
+        bottomBar = {
+            if (!immersive) {
+                BottomNavigation(
+                    backgroundColor = AppTheme.colors.surface,
+                    contentColor = AppTheme.colors.inkSub,
+                    elevation = AppDimens.divider
+                ) {
+                    navItems.forEachIndexed { index, item ->
+                        val selected = selectedIndex == index
                         BottomNavigationItem(
-                            icon = { Text(when (index) {
-                                0 -> "🏋️"
-                                1 -> "📁"
-                                2 -> "✅"
-                                3 -> "📊"
-                                4 -> "⚙️"
-                                else -> "?"
-                            }) },
-                            label = { Text(title) },
-                            selected = selectedIndex == index,
-                            onClick = { selectedIndex = index }
+                            icon = {
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = if (selected) AppTheme.colors.brandSoft
+                                            else AppTheme.colors.surface,
+                                            shape = AppShapes.chip
+                                        )
+                                        .padding(
+                                            horizontal = AppDimens.s2,
+                                            vertical = AppDimens.s1
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AppIcon(
+                                        imageVector = item.icon,
+                                        contentDescription = item.label,
+                                        tint = if (selected) AppTheme.colors.brandStrong
+                                        else AppTheme.colors.inkMuted,
+                                        size = AppDimens.icon
+                                    )
+                                }
+                            },
+                            label = {
+                                Text(text = item.label, style = MaterialTheme.typography.caption)
+                            },
+                            selected = selected,
+                            onClick = { selectedIndex = index },
+                            selectedContentColor = AppTheme.colors.brandStrong,
+                            unselectedContentColor = AppTheme.colors.inkMuted
                         )
                     }
                 }
             }
-        ) { innerPadding ->
-            Box(modifier = Modifier.padding(innerPadding)) {
-                when (selectedIndex) {
-                    0 -> TrainingScreen(
-                        onTrainingComplete = {
-                            // 训练完成，检查成就
-                            scope.launch {
-                                val achs = AchievementManager.checkNewAchievements(repository)
-                                if (achs.isNotEmpty()) {
-                                    newAchievements = achs
-                                    showAchievements = true
-                                }
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when (selectedIndex) {
+                0 -> TrainingScreen(
+                    onTrainingComplete = {
+                        scope.launch {
+                            val achs = AchievementManager.checkNewAchievements(repository)
+                            if (achs.isNotEmpty()) {
+                                newAchievements = achs
+                                showAchievements = true
                             }
                         }
-                    )
-                    1 -> GroupScreen()
-                    2 -> CheckinScreen()
-                    3 -> StatisticsScreen()
-                    4 -> SettingsScreen(
-                        onThemeChange = { isDarkMode = it },
-                        authService = authService,
-                        onLogout = onLogout
-                    )
-                    else -> TrainingScreen()
-                }
+                    },
+                    onImmersiveChange = { immersive = it }
+                )
+                1 -> GroupScreen()
+                2 -> CheckinScreen()
+                3 -> StatisticsScreen()
+                4 -> SettingsScreen(
+                    onThemeChange = onThemeChange,
+                    authService = authService,
+                    onLogout = onLogout
+                )
+                else -> TrainingScreen(onImmersiveChange = { immersive = it })
             }
         }
+    }
 
-        // 成就解锁弹窗
-        if (showAchievements && newAchievements.isNotEmpty()) {
-            AchievementDialog(
-                achievements = newAchievements,
-                onDismiss = {
-                    showAchievements = false
-                    newAchievements = emptyList()
-                }
-            )
-        }
+    if (showAchievements && newAchievements.isNotEmpty()) {
+        AchievementDialog(
+            achievements = newAchievements,
+            onDismiss = {
+                showAchievements = false
+                newAchievements = emptyList()
+            }
+        )
     }
 }
 

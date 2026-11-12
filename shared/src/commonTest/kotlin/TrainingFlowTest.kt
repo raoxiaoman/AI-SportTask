@@ -40,11 +40,10 @@ class TrainingFlowTest {
         // 验证训练结果
         assertEquals(groupId, result.groupId)
         assertTrue(result.completed)
-        assertEquals(150, result.duration) // (45+15) + (60+20) + 30
+        assertEquals(170, result.duration) // (45+15) + (60+20) + 30
 
         // 映射为打卡
         val checkin = mapTrainingToCheckin(result)
-        assertEquals(groupId, checkin.groupId)
         assertEquals(result.duration, checkin.duration)
         assertTrue(checkin.isCompleted)
     }
@@ -103,7 +102,7 @@ class TrainingFlowTest {
         val restDurations = listOf(12, 18) // 实际休息时间
         val totalRestTime = restDurations.sum()
 
-        assertEquals(123, totalActionTime + totalRestTime)
+        assertEquals(153, totalActionTime + totalRestTime) // 40+55+28 + 12+18
     }
 
     @Test

@@ -26,13 +26,13 @@ class StreakEdgeTest {
     }
 
     @Test
-    fun `间隔一天后连续三天-最大连续为3`() {
+    fun `间隔一天后连续四天-最大连续为4`() {
         val dates = listOf(
             "2025-05-19", "2025-05-20",       // 连续2天
-            "2025-05-22",                      // 断一天
-            "2025-05-23", "2025-05-24", "2025-05-25" // 连续3天
+                                               // 5/21 缺一天
+            "2025-05-22", "2025-05-23", "2025-05-24", "2025-05-25" // 连续4天
         )
-        assertEquals(3, calculateConsecutiveDays(dates))
+        assertEquals(4, calculateConsecutiveDays(dates))
     }
 
     @Test

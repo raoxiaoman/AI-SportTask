@@ -217,7 +217,7 @@ class TrainingLogicTest {
             it.defaultTime + it.restTime
         } - actions.last().restTime
 
-        assertEquals(150, totalWithoutLastRest) // (45+15)+(60+20)+30
+        assertEquals(170, totalWithoutLastRest) // (45+15)+(60+20)+(30+10)-10
     }
 
     @Test

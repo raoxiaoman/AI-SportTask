@@ -1,4 +1,8 @@
 package pages
+import ui.AppIcon
+import ui.AppIcons
+import ui.theme.*
+
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,9 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
-import ui.EmptyState
+import ui.IconBadge
+import ui.LiteCard
+import ui.PageHeader
+import ui.SectionHeader
 import ui.FullScreenLoading
 import data.calculateConsecutiveDays
 import data.formatTime
@@ -28,20 +36,20 @@ fun StatisticsScreen() {
     var isLoading by remember { mutableStateOf(true) }
     var weeklyCount by remember { mutableStateOf(0) }
     var weeklyDuration by remember { mutableStateOf(0) }
-    var monthlyCount by remember { mutableStateOf(0) }
-    var monthlyDuration by remember { mutableStateOf(0) }
     var consecutiveDays by remember { mutableStateOf(0) }
     var totalTrainingCount by remember { mutableStateOf(0) }
     var dailyStats by remember { mutableStateOf<List<DailyStat>>(emptyList()) }
     var groupCount by remember { mutableStateOf(0) }
+    var actionCount by remember { mutableStateOf(0) }
+    var weeklyRate by remember { mutableStateOf(0) }
     val repository = SportTaskRepository
 
     LaunchedEffect(Unit) {
         val today = todayDateString()
-        val weekStart = daysAgoDateString(6)
-        val weekEnd = today
-        val monthStart = daysAgoDateString(29)
-        val monthEnd = today
+        // 本周 = 周一 ~ 周日（dayOfWeekFromDate 返回 1=周一）
+        val mondayOffset = dayOfWeekFromDate(today) - 1
+        val weekStart = daysAgoDateString(mondayOffset)
+        val weekEnd = daysAgoDateString(mondayOffset - 6)
 
         // 获取本周数据
         val weeklySummary = withContext(Dispatchers.Default) {
@@ -49,13 +57,6 @@ fun StatisticsScreen() {
         }
         weeklyCount = weeklySummary.sumOf { it.count.toInt() }
         weeklyDuration = weeklySummary.sumOf { it.total_duration.toInt() }
-
-        // 获取本月数据
-        val monthlySummary = withContext(Dispatchers.Default) {
-            repository.getDailySummary(monthStart, monthEnd)
-        }
-        monthlyCount = monthlySummary.sumOf { it.count.toInt() }
-        monthlyDuration = monthlySummary.sumOf { it.total_duration.toInt() }
 
         // 获取每日数据用于图表
         dailyStats = weeklySummary.map { summary ->
@@ -77,350 +78,260 @@ fun StatisticsScreen() {
         totalTrainingCount = allCheckins.size
 
         groupCount = repository.getGroups().size
+        actionCount = repository.getAllActions().size
+
+        // 本周完成率：计划训练日中已完成的比例（无计划时为 0）
+        weeklyRate = runCatching {
+            val week = data.plan.PlanRepository.weekRhythm() ?: emptyList()
+            val planned = week.count { it.inPlan && it.isTrainingDay }
+            if (planned > 0) (week.count { it.isCompleted } * 100 / planned) else 0
+        }.getOrDefault(0)
+
         isLoading = false
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("📊 统计数据") }
-            )
-        }
-    ) { innerPadding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppTheme.colors.background)
+    ) {
         if (isLoading) {
-            FullScreenLoading(modifier = Modifier.padding(innerPadding))
+            FullScreenLoading()
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(AppDimens.s2)
             ) {
+                // 页头
                 item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    // 连续打卡卡片
-                    ConsecutiveDaysCard(consecutiveDays = consecutiveDays)
-                }
-
-                item {
-                    // 本周统计卡片
-                    WeeklyStatsCard(
-                        weeklyCount = weeklyCount,
-                        weeklyDuration = weeklyDuration
-                    )
-                }
-
-                item {
-                    // 本月统计卡片
-                    MonthlyStatsCard(
-                        monthlyCount = monthlyCount,
-                        monthlyDuration = monthlyDuration
-                    )
-                }
-
-                item {
-                    // 每日训练图表
-                    WeeklyChartCard(dailyStats = dailyStats)
-                }
-
-                item {
-                    // 总统计
-                    TotalStatsCard(totalTrainingCount = totalTrainingCount, totalGroups = groupCount)
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ConsecutiveDaysCard(consecutiveDays: Int) {
-    val isHighStreak = consecutiveDays >= 7
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = if (isHighStreak) {
-            MaterialTheme.colors.primary
-        } else {
-            MaterialTheme.colors.surface
-        }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(
-                    text = "🔥 连续打卡",
-                    style = MaterialTheme.typography.subtitle1,
-                    color = if (isHighStreak) Color.White else Color.Gray
-                )
-                Text(
-                    text = "保持习惯，继续加油！",
-                    style = MaterialTheme.typography.body2,
-                    color = if (isHighStreak) Color.White.copy(alpha = 0.8f) else Color.Gray
-                )
-            }
-            Text(
-                text = "$consecutiveDays 天",
-                style = MaterialTheme.typography.h3,
-                fontWeight = FontWeight.Bold,
-                color = if (isHighStreak) Color.White else MaterialTheme.colors.primary
-            )
-        }
-    }
-}
-
-@Composable
-fun WeeklyStatsCard(weeklyCount: Int, weeklyDuration: Int) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "📅 本周训练",
-                style = MaterialTheme.typography.subtitle1,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "$weeklyCount",
-                        style = MaterialTheme.typography.h4,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.primary
-                    )
-                    Text(
-                        text = "训练次数",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.Gray
-                    )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = formatTime(weeklyDuration),
-                        style = MaterialTheme.typography.h4,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.primary
-                    )
-                    Text(
-                        text = "总时长",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.Gray
-                    )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val avgSeconds = if (weeklyCount > 0) weeklyDuration / weeklyCount else 0
-                    val avgMinutes = avgSeconds / 60
-                    Text(
-                        text = "$avgMinutes",
-                        style = MaterialTheme.typography.h4,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.primary
-                    )
-                    Text(
-                        text = "平均分钟",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.Gray
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MonthlyStatsCard(monthlyCount: Int, monthlyDuration: Int) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "📆 本月训练",
-                style = MaterialTheme.typography.subtitle1,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "$monthlyCount",
-                        style = MaterialTheme.typography.h4,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.secondary
-                    )
-                    Text(
-                        text = "训练次数",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.Gray
-                    )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = formatTime(monthlyDuration),
-                        style = MaterialTheme.typography.h4,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.secondary
-                    )
-                    Text(
-                        text = "总时长",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.Gray
-                    )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val daysInMonth = 30
-                    val progress = (monthlyCount.toFloat() / daysInMonth * 100).toInt()
-                    Text(
-                        text = "$progress%",
-                        style = MaterialTheme.typography.h4,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.secondary
-                    )
-                    Text(
-                        text = "完成率",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.Gray
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun WeeklyChartCard(dailyStats: List<DailyStat>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "📈 本周训练趋势",
-                style = MaterialTheme.typography.subtitle1,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (dailyStats.isEmpty()) {
-                Text(
-                    text = "本周暂无训练数据",
-                    style = MaterialTheme.typography.body2,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(vertical = 20.dp).fillMaxWidth(),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            } else {
-                // 简易柱状图
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    val maxCount = dailyStats.maxOfOrNull { it.count } ?: 1
-
-                    val dayLabels = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
-
-                    // 生成完整的7天数据
-                    val fullWeek = (0..6).map { offset ->
-                        val dateStr = daysAgoDateString(6 - offset)
-                        dailyStats.find { it.date == dateStr }
-                            ?: DailyStat(date = dateStr, count = 0, duration = 0)
-                    }
-
-                    fullWeek.forEach { stat ->
-                        val dayOfWeek = dayOfWeekFromDate(stat.date)
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            // 柱子
-                            val height = (stat.count.toFloat() / maxCount * 80).dp.coerceAtLeast(4.dp)
-                            Box(
-                                modifier = Modifier
-                                    .width(24.dp)
-                                    .height(height)
-                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                                    .background(
-                                        if (stat.count > 0) MaterialTheme.colors.primary
-                                        else Color.LightGray
-                                    )
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = dayLabels.getOrElse(dayOfWeek - 1) { "日" }.take(1),
-                                style = MaterialTheme.typography.caption,
-                                color = Color.Gray
-                            )
+                    PageHeader(
+                        title = "训练数据",
+                        eyebrow = null,
+                        trailing = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "本周",
+                                    style = MaterialTheme.typography.caption,
+                                    color = AppTheme.colors.inkSub
+                                )
+                                AppIcon(
+                                    imageVector = AppIcons.ChevronDown,
+                                    contentDescription = "切换周期",
+                                    tint = AppTheme.colors.inkMuted,
+                                    size = AppDimens.iconSmall
+                                )
+                            }
                         }
-                    }
+                    )
                 }
+
+                // 连续打卡
+                item {
+                    ConsecutiveDaysCard(
+                        consecutiveDays = consecutiveDays,
+                        modifier = Modifier.padding(horizontal = AppDimens.screenPadding)
+                    )
+                }
+
+                // 本周概览
+                item { SectionHeader(text = "本周概览") }
+                item {
+                    WeekOverviewCard(
+                        count = weeklyCount,
+                        duration = weeklyDuration,
+                        rate = weeklyRate,
+                        modifier = Modifier.padding(horizontal = AppDimens.screenPadding)
+                    )
+                }
+
+                // 训练趋势
+                item { SectionHeader(text = "训练趋势") }
+                item {
+                    WeeklyChartCard(
+                        dailyStats = dailyStats,
+                        modifier = Modifier.padding(horizontal = AppDimens.screenPadding)
+                    )
+                }
+
+                // 累计
+                item { SectionHeader(text = "累计") }
+                item {
+                    TotalStatsCard(
+                        totalTrainingCount = totalTrainingCount,
+                        totalGroups = groupCount,
+                        totalActions = actionCount,
+                        modifier = Modifier.padding(horizontal = AppDimens.screenPadding)
+                    )
+                }
+
+                item { Spacer(modifier = Modifier.height(AppDimens.s6)) }
             }
         }
     }
 }
 
 @Composable
-fun TotalStatsCard(totalTrainingCount: Int, totalGroups: Int) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = MaterialTheme.colors.surface
-    ) {
+fun ConsecutiveDaysCard(consecutiveDays: Int, modifier: Modifier = Modifier) {
+    LiteCard(modifier = modifier) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = AppDimens.s3,
+                vertical = AppDimens.s3
+            ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconBadge(
+                icon = AppIcons.Streak,
+                contentDescription = null,
+                tint = AppTheme.colors.success,
+                container = AppTheme.colors.successSoft
+            )
+            Spacer(modifier = Modifier.width(AppDimens.s3))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "连续打卡",
+                    style = MaterialTheme.typography.body1,
+                    fontWeight = AppTypeWeight.medium,
+                    color = AppTheme.colors.ink
+                )
+                Text(
+                    text = "保持习惯，继续加油",
+                    style = MaterialTheme.typography.caption,
+                    color = AppTheme.colors.inkSub
+                )
+            }
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = "$consecutiveDays",
+                    style = MaterialTheme.typography.h3,
+                    fontWeight = AppTypeWeight.emphasis,
+                    color = AppTheme.colors.brandStrong
+                )
+                Text(
+                    text = " 天",
+                    style = MaterialTheme.typography.caption,
+                    color = AppTheme.colors.inkSub
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun WeekOverviewCard(count: Int, duration: Int, rate: Int, modifier: Modifier = Modifier) {
+    LiteCard(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(vertical = AppDimens.s6, horizontal = AppDimens.s4),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            StatColumn(value = "$count", label = "训练次数")
+            StatColumn(value = formatTime(duration), label = "总时长")
+            StatColumn(value = "$rate%", label = "完成率")
+        }
+    }
+}
+
+@Composable
+fun StatColumn(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.h2,
+            fontWeight = AppTypeWeight.emphasis,
+            color = AppTheme.colors.brandStrong
+        )
+        Spacer(modifier = Modifier.height(AppDimens.s1))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.caption,
+            color = AppTheme.colors.inkSub
+        )
+    }
+}
+
+@Composable
+fun WeeklyChartCard(dailyStats: List<DailyStat>, modifier: Modifier = Modifier) {
+    val today = todayDateString()
+    // 今天在本周中的下标：0=周一 … 6=周日
+    val todayIndex = dayOfWeekFromDate(today) - 1
+    LiteCard(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppDimens.s4)
+        ) {
+            // 柱状图：7 根圆角短柱常驻显示，今天用品牌绿高亮
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(AppDimens.chartHeight),
+                horizontalArrangement = Arrangement.spacedBy(AppDimens.s2),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                val maxCount = (dailyStats.maxOfOrNull { it.count } ?: 0).coerceAtLeast(1)
+                val dayLabels = listOf("一", "二", "三", "四", "五", "六", "日")
+
+                (0..6).forEach { i ->
+                    val dateStr = daysAgoDateString(todayIndex - i)
+                    val stat = dailyStats.find { it.date == dateStr }
+                        ?: DailyStat(date = dateStr, count = 0, duration = 0)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        // 无数据时保留 20% 基线短柱，避免空图表
+                        val fillRatio = stat.count.toFloat() / maxCount
+                        val height = (AppDimens.chartHeight * (0.2f + 0.8f * fillRatio))
+                            .coerceAtMost(AppDimens.chartHeight)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(height)
+                                .background(
+                                    color = if (i == todayIndex) AppTheme.colors.success
+                                    else AppTheme.colors.brandSoft,
+                                    shape = AppShapes.chip
+                                )
+                        )
+                        Spacer(modifier = Modifier.height(AppDimens.s1))
+                        Text(
+                            text = dayLabels[i],
+                            style = MaterialTheme.typography.caption,
+                            color = if (i == todayIndex) AppTheme.colors.success
+                            else AppTheme.colors.inkSub
+                        )
+                    }
+                }
+            }
+
+            if (dailyStats.all { it.count == 0 }) {
+                Spacer(modifier = Modifier.height(AppDimens.s3))
                 Text(
-                    text = "$totalTrainingCount",
-                    style = MaterialTheme.typography.h5,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "累计训练",
-                    style = MaterialTheme.typography.body2,
-                    color = Color.Gray
+                    text = "本周暂无数据，完成首次训练后生成",
+                    style = MaterialTheme.typography.caption,
+                    color = AppTheme.colors.inkMuted,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
                 )
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "$totalGroups",
-                    style = MaterialTheme.typography.h5,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "训练分组",
-                    style = MaterialTheme.typography.body2,
-                    color = Color.Gray
-                )
-            }
+        }
+    }
+}
+
+@Composable
+fun TotalStatsCard(totalTrainingCount: Int, totalGroups: Int, totalActions: Int, modifier: Modifier = Modifier) {
+    LiteCard(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = AppDimens.s6, horizontal = AppDimens.s4),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            StatColumn(value = "$totalGroups", label = "训练分组")
+            StatColumn(value = "$totalActions", label = "训练动作")
+            StatColumn(value = "$totalTrainingCount", label = "累计训练")
         }
     }
 }

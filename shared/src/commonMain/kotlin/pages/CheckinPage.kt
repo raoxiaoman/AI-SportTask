@@ -1,13 +1,20 @@
 package pages
+import ui.AppIcon
+import ui.AppIcons
+import ui.theme.*
+
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -21,6 +28,10 @@ import data.SportTaskRepository
 import data.formatTime
 import ui.EmptyState
 import ui.FullScreenLoading
+import ui.IconBadge
+import ui.LiteCard
+import ui.PageHeader
+import ui.SectionHeader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -96,37 +107,45 @@ fun CheckinScreen() {
         filteredCheckins = applyFilters(checkins, searchQuery, selectedGroupId)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("打卡记录") },
-                actions = {
-                    // 搜索按钮
-                    IconButton(onClick = { showFilterSheet = true }) {
-                        Text("🔍")
-                    }
-                    // 删除全部按钮
-                    if (filteredCheckins.isNotEmpty()) {
-                        IconButton(onClick = { showDeleteAllDialog = true }) {
-                            Text("🗑️")
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppTheme.colors.background)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // 页头：标题 + 搜索/删除入口
+            PageHeader(
+                title = "打卡记录",
+                trailing = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(AppDimens.s2)) {
+                        IconBadge(
+                            icon = AppIcons.Search,
+                            contentDescription = "搜索",
+                            // 直接可点击，规格与设置页页头徽标一致，不撑高页头行
+                            modifier = Modifier.clickable { showFilterSheet = true }
+                        )
+                        if (filteredCheckins.isNotEmpty()) {
+                            IconBadge(
+                                icon = AppIcons.Delete,
+                                contentDescription = "删除",
+                                tint = AppTheme.colors.danger,
+                                container = AppTheme.colors.dangerSoft,
+                                modifier = Modifier.clickable { showDeleteAllDialog = true }
+                            )
                         }
                     }
                 }
             )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
+
             // 搜索栏
             SearchBar(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = AppDimens.screenPadding, vertical = AppDimens.s2)
             )
 
             // 筛选标签
@@ -136,7 +155,7 @@ fun CheckinScreen() {
                 onGroupSelected = { selectedGroupId = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = AppDimens.screenPadding)
             )
 
             // 内容区域
@@ -144,23 +163,25 @@ fun CheckinScreen() {
                 FullScreenLoading()
             } else if (filteredCheckins.isEmpty()) {
                 EmptyState(
-                    icon = "📝",
+                    icon = AppIcons.Note,
                     title = "暂无打卡记录",
                     subtitle = "开始训练来完成你的第一次打卡吧！"
                 )
             } else {
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        horizontal = AppDimens.screenPadding,
+                        vertical = AppDimens.s2
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.s3)
                 ) {
                     item {
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "共 ${filteredCheckins.size} 条记录",
-                            style = MaterialTheme.typography.subtitle2,
-                            color = Color.Gray
+                            style = MaterialTheme.typography.caption,
+                            color = AppTheme.colors.inkMuted
                         )
                     }
 
@@ -182,7 +203,7 @@ fun CheckinScreen() {
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(AppDimens.s4))
                     }
                 }
             }
@@ -232,7 +253,7 @@ fun CheckinScreen() {
                         }
                     }
                 ) {
-                    Text("删除", color = Color.Red)
+                    Text("删除", color = AppTheme.colors.danger)
                 }
             },
             dismissButton = {
@@ -261,7 +282,7 @@ fun CheckinScreen() {
                         }
                     }
                 ) {
-                    Text("删除全部", color = Color.Red)
+                    Text("删除全部", color = AppTheme.colors.danger)
                 }
             },
             dismissButton = {
@@ -320,13 +341,21 @@ fun SearchBar(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 填充式圆角搜索框：无描边，浅灰底
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier,
         placeholder = { Text("搜索分组名称或日期...") },
         singleLine = true,
-        leadingIcon = { Text("🔍") }
+        shape = AppShapes.chip,
+        leadingIcon = { AppIcon(AppIcons.Search, "搜索", size = AppDimens.iconSmall, tint = AppTheme.colors.inkMuted) },
+        colors = TextFieldDefaults.outlinedTextFieldColors(
+            backgroundColor = AppTheme.colors.surfaceAlt,
+            focusedBorderColor = AppTheme.colors.surfaceAlt,
+            unfocusedBorderColor = AppTheme.colors.surfaceAlt,
+            cursorColor = AppTheme.colors.brand
+        )
     )
 }
 
@@ -337,11 +366,12 @@ fun FilterChips(
     onGroupSelected: (Long?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 分组可能很多，一行放不下时横向滑动，绝不换行裁切
     Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(AppDimens.s2)
     ) {
-        groups.take(4).forEach { group ->
+        groups.forEach { group ->
             FilterChip(
                 text = group.name,
                 isSelected = selectedGroupId == group.id,
@@ -362,15 +392,16 @@ fun FilterChip(
 ) {
     Surface(
         onClick = onClick,
-        shape = MaterialTheme.shapes.small,
-        color = if (isSelected) MaterialTheme.colors.primary else MaterialTheme.colors.surface,
-        border = if (isSelected) null else ButtonDefaults.outlinedBorder
+        shape = AppShapes.pill,
+        color = if (isSelected) AppTheme.colors.brand else AppTheme.colors.surface,
+        border = if (isSelected) null else
+            androidx.compose.foundation.BorderStroke(AppDimens.divider, AppTheme.colors.outline)
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.body2,
-            color = if (isSelected) MaterialTheme.colors.onPrimary else MaterialTheme.colors.onSurface,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            style = MaterialTheme.typography.caption,
+            color = if (isSelected) AppTheme.colors.onBrand else AppTheme.colors.inkSub,
+            modifier = Modifier.padding(horizontal = AppDimens.s3, vertical = AppDimens.s2)
         )
     }
 }
@@ -393,12 +424,9 @@ fun DateSection(
 
     var expanded by remember { mutableStateOf(true) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = 2.dp
-    ) {
+    LiteCard {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(AppDimens.s4)
         ) {
             Row(
                 modifier = Modifier
@@ -410,13 +438,15 @@ fun DateSection(
                 Column {
                     Text(
                         text = formattedDate,
-                        style = MaterialTheme.typography.subtitle1,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.body1,
+                        fontWeight = AppTypeWeight.emphasis,
+                        color = AppTheme.colors.ink
                     )
+                    Spacer(modifier = Modifier.height(AppDimens.s1))
                     Text(
                         text = dayOfWeek,
-                        style = MaterialTheme.typography.body2,
-                        color = Color.Gray
+                        style = MaterialTheme.typography.caption,
+                        color = AppTheme.colors.inkSub
                     )
                 }
                 Column(
@@ -424,13 +454,15 @@ fun DateSection(
                 ) {
                     Text(
                         text = "${checkins.size} 次训练",
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.primary
+                        style = MaterialTheme.typography.caption,
+                        color = AppTheme.colors.brandStrong
                     )
+                    Spacer(modifier = Modifier.height(AppDimens.s1))
                     Text(
                         text = formatTime(checkins.sumOf { it.duration }),
                         style = MaterialTheme.typography.body1,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = AppTypeWeight.medium,
+                        color = AppTheme.colors.ink
                     )
                 }
             }
@@ -441,9 +473,14 @@ fun DateSection(
                 exit = shrinkVertically()
             ) {
                 Column {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.s3))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(AppDimens.divider)
+                            .background(AppTheme.colors.outline)
+                    )
+                    Spacer(modifier = Modifier.height(AppDimens.s2))
 
                     checkins.forEachIndexed { index, checkin ->
                         CheckinItemRow(
@@ -452,7 +489,7 @@ fun DateSection(
                             onDeleteClick = { onDeleteClick(checkin) }
                         )
                         if (index < checkins.size - 1) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(AppDimens.s2))
                         }
                     }
                 }
@@ -478,19 +515,20 @@ fun CheckinItemRow(
         // 状态指示器
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(AppDimens.s2)
                 .background(
-                    color = if (checkin.isCompleted) Color(0xFF4CAF50) else Color.Gray,
-                    shape = MaterialTheme.shapes.small
+                    color = if (checkin.isCompleted) AppTheme.colors.success else AppTheme.colors.inkMuted,
+                    shape = CircleShape
                 )
         )
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(AppDimens.s3))
 
         // 训练类型
         Text(
             text = checkin.groupName,
             style = MaterialTheme.typography.body1,
+            color = AppTheme.colors.ink,
             modifier = Modifier.weight(1f)
         )
 
@@ -498,34 +536,34 @@ fun CheckinItemRow(
         Text(
             text = formatTime(checkin.duration),
             style = MaterialTheme.typography.body2,
-            color = Color.Gray
+            color = AppTheme.colors.inkSub
         )
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(AppDimens.s2))
 
         // 完成状态标签
         if (checkin.isCompleted) {
             Text(
                 text = "完成",
                 style = MaterialTheme.typography.caption,
-                color = Color(0xFF4CAF50),
+                color = AppTheme.colors.success,
                 modifier = Modifier
                     .background(
-                        color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                        color = AppTheme.colors.successSoft,
                         shape = MaterialTheme.shapes.small
                     )
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .padding(horizontal = AppDimens.s2, vertical = AppDimens.hairline)
             )
         }
 
         // 操作按钮
         if (showActions) {
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(onClick = onEditClick, modifier = Modifier.size(32.dp)) {
-                Text("✏️", style = MaterialTheme.typography.body2)
+            Spacer(modifier = Modifier.width(AppDimens.s2))
+            IconButton(onClick = onEditClick, modifier = Modifier.size(AppDimens.s8)) {
+                AppIcon(AppIcons.Edit, "编辑", size = AppDimens.iconSmall)
             }
-            IconButton(onClick = onDeleteClick, modifier = Modifier.size(32.dp)) {
-                Text("🗑️", style = MaterialTheme.typography.body2)
+            IconButton(onClick = onDeleteClick, modifier = Modifier.size(AppDimens.s8)) {
+                AppIcon(AppIcons.Delete, "删除", size = AppDimens.iconSmall)
             }
         }
     }
@@ -549,9 +587,9 @@ fun EditCheckinDialog(
                 Text(
                     text = "分组: ${checkin.groupName}",
                     style = MaterialTheme.typography.body2,
-                    color = Color.Gray
+                    color = AppTheme.colors.inkSub
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppDimens.s4))
 
                 OutlinedTextField(
                     value = duration,
@@ -562,7 +600,7 @@ fun EditCheckinDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppDimens.s4))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -572,7 +610,13 @@ fun EditCheckinDialog(
                     Text("已完成")
                     Switch(
                         checked = completed,
-                        onCheckedChange = onCompletedChange
+                        onCheckedChange = onCompletedChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = AppTheme.colors.onBrand,
+                            checkedTrackColor = AppTheme.colors.brand,
+                            uncheckedThumbColor = AppTheme.colors.surface,
+                            uncheckedTrackColor = AppTheme.colors.surfaceAlt
+                        )
                     )
                 }
             }
@@ -608,60 +652,60 @@ fun FilterBottomSheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(AppDimens.s4)
     ) {
         Text(
             text = "筛选",
             style = MaterialTheme.typography.h6,
-            fontWeight = FontWeight.Bold
+            fontWeight = AppTypeWeight.emphasis
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(AppDimens.s4))
 
         // 搜索
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             label = { Text("搜索") },
-            leadingIcon = { Text("🔍") },
+            leadingIcon = { AppIcon(AppIcons.Search, "搜索", size = AppDimens.iconSmall) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(AppDimens.s4))
 
         // 分组筛选
         Text(
             text = "按分组筛选",
             style = MaterialTheme.typography.subtitle2,
-            color = Color.Gray
+            color = AppTheme.colors.inkSub
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(AppDimens.s2))
 
         groups.forEach { group ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onGroupSelected(group.id) }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = AppDimens.s2),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
                     selected = selectedGroupId == group.id,
                     onClick = { onGroupSelected(group.id) }
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(AppDimens.s2))
                 Text(group.name)
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(AppDimens.s6))
 
         // 按钮
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(AppDimens.s4)
         ) {
             OutlinedButton(
                 onClick = onClearFilters,
@@ -677,7 +721,7 @@ fun FilterBottomSheet(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(AppDimens.s8))
     }
 }
 

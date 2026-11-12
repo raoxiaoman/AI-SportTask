@@ -219,8 +219,9 @@ class AchievementTest {
 
     @Test
     fun `累计次数成就难度递进`() {
+        // 只筛「累计次数」成就；hour_total 是累计时长成就，不属于难度序列
         val countAch = ALL_ACHIEVEMENTS.filter {
-            it.id.contains("total")
+            it.id in setOf("ten_total", "fifty_total", "hundred_total")
         }.sortedBy { it.sortOrder }
 
         val requiredCounts = countAch.map {

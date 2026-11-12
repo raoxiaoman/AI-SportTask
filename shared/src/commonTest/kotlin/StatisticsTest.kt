@@ -170,7 +170,7 @@ class StatisticsTest {
     @Test
     fun `柱状图-最大高度归一化`() {
         val counts = listOf(0, 1, 3, 2, 0, 1, 2)
-        val maxCount = counts.maxOrNull() ?: 1
+        val maxCount = (counts.maxOrNull() ?: 0).coerceAtLeast(1)
         val normalized = counts.map { it.toFloat() / maxCount }
 
         assertEquals(1f, normalized[2]) // 索引2对应3次，是最大值
@@ -181,7 +181,7 @@ class StatisticsTest {
     @Test
     fun `柱状图-全零不崩溃`() {
         val counts = listOf(0, 0, 0, 0, 0, 0, 0)
-        val maxCount = counts.maxOrNull() ?: 1
+        val maxCount = (counts.maxOrNull() ?: 0).coerceAtLeast(1)
         val normalized = counts.map { it.toFloat() / maxCount }
 
         // 全零时 maxCount 回退到1，全部显示为0
