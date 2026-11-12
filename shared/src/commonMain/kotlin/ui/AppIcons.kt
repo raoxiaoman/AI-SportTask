@@ -301,7 +301,18 @@ object AppIcons {
     )
 
     val Play = strokeIcon("play",
-        { moveTo(8.5f, 5.2f); lineTo(18.8f, 12f); lineTo(8.5f, 18.8f); close() }
+        { moveTo(8f, 5.5f); lineTo(18f, 12f); lineTo(8f, 18.5f); close() }
+    )
+
+    /** 视频演示：圆角播放框内三角 */
+    val Video = strokeIcon("video",
+        {
+            moveTo(6f, 4.5f); lineTo(18f, 4.5f); arcTo(2.5f, 2.5f, 0f, isMoreThanHalf = false, isPositiveArc = false, 20.5f, 7f)
+            lineTo(20.5f, 17f); arcTo(2.5f, 2.5f, 0f, isMoreThanHalf = false, isPositiveArc = false, 18f, 19.5f)
+            lineTo(6f, 19.5f); arcTo(2.5f, 2.5f, 0f, isMoreThanHalf = false, isPositiveArc = false, 3.5f, 17f)
+            lineTo(3.5f, 7f); arcTo(2.5f, 2.5f, 0f, isMoreThanHalf = false, isPositiveArc = false, 6f, 4.5f); close()
+        },
+        { moveTo(10.3f, 8.8f); lineTo(15.2f, 12f); lineTo(10.3f, 15.2f); close() }
     )
 
     val Pause = strokeIcon("pause",

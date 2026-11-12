@@ -46,6 +46,8 @@ object AppDimens {
     val progressRingSmall: Dp = 150.dp
     val chartHeight: Dp = 120.dp
     val dialogWidth: Dp = 280.dp
+    /** 动作示意图边长 */
+    val diagramSize: Dp = 224.dp
 
     val cardRadius: Dp = 16.dp
     val cardRadiusLarge: Dp = 18.dp
