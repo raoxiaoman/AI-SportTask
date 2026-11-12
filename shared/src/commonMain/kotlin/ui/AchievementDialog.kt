@@ -1,4 +1,8 @@
 package ui
+import ui.AppIcon
+import ui.AppIcons
+import ui.theme.*
+
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -29,12 +33,12 @@ fun AchievementDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShapes.dialog,
         title = {
             Text(
-                text = "🎉 新成就解锁！",
+                text = "新成就解锁！",
                 style = MaterialTheme.typography.h5,
-                fontWeight = FontWeight.Bold,
+                fontWeight = AppTypeWeight.emphasis,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
@@ -42,7 +46,7 @@ fun AchievementDialog(
         text = {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(AppDimens.s4)
             ) {
                 achievements.forEachIndexed { index, ach ->
                     Row(
@@ -52,23 +56,23 @@ fun AchievementDialog(
                         // 成就图标
                         Text(
                             text = ach.icon,
-                            fontSize = 36.sp,
-                            modifier = Modifier.width(52.dp)
+                            fontSize = AppTypeScale.achievementIcon,
+                            modifier = Modifier.width(AppDimens.buttonHeight)
                         )
 
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(AppDimens.s2))
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = ach.title,
                                 style = MaterialTheme.typography.subtitle1,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = AppTypeWeight.emphasis,
                                 color = MaterialTheme.colors.primary
                             )
                             Text(
                                 text = ach.description,
                                 style = MaterialTheme.typography.caption,
-                                color = Color.Gray
+                                color = AppTheme.colors.inkSub
                             )
                         }
                     }
@@ -84,7 +88,7 @@ fun AchievementDialog(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("太棒了！继续加油 💪")
+                Text("太棒了！继续加油")
             }
         }
     )
