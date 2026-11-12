@@ -60,19 +60,38 @@
 
 ## 自动打包（GitHub Actions）
 
-推送或提交 PR 到 `main`、手动触发 workflow，都会自动执行 `303` 项单元测试并打出 **Debug APK**（可直接安装）。
-在 [Actions 页面](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml) 打开对应运行，从 **Artifacts** 下载 `AI-SportTask-debug-<run>`（保留 30 天）；
-推送 `v*` 标签会额外创建 GitHub Release 并附上 APK。
+| 触发方式 | 产出 |
+|---|---|
+| push / PR 到 `main` | `303` 项单测 + Debug APK（artifact 保留 30 天） |
+| 手动运行 workflow（可填版本号） | 追加**签名 Release APK** |
+| 推送 `v*` 标签，如 `v1.0.0` | 签名 Release APK + 同名 GitHub Release |
 
-本地等价命令：
+在 [Actions 页面](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml) 打开对应运行，从 **Artifacts** 下载 `AI-SportTask-apk-<run>`。
+
+**版本号由 tag 驱动**：`v1.0.0` → `versionName=1.0.0`、`versionCode=GITHUB_RUN_NUMBER`，
+APK 文件名、Release 标题、设置页「关于」三处一致；本地未指定时默认 `1.0.0-dev` / `1`。
+签名密钥保存在仓库 Secrets 中，不进入代码库。
+
+
+发版命令：
 
 ```bash
-./gradlew :shared:testDebugUnitTest :androidApp:assembleDebug
-# 产物：androidApp/build/outputs/apk/debug/androidApp-debug.apk
+git tag v1.0.0 && git push origin v1.0.0
 ```
 
-> CI 不读取 gitignored 的 `local.properties` / `server_url.txt`，打出的包默认指向 `http://localhost:3456`；
-> 云同步请在登录页「服务器设置」中填写实际地址（本机配置不会进仓库）。
+本地等价构建：
+
+```bash
+./gradlew :shared:testDebugUnitTest :androidApp:assembleDebug \
+  -Papp.versionName=1.0.0 -Papp.versionCode=42
+# 产物：androidApp/build/outputs/apk/debug/androidApp-debug.apk
+# release 包还需提供 keystorePath / keystoreStorePassword / keystoreKeyAlias / keystoreKeyPassword
+```
+
+> CI 不读取 gitignored 的 `local.properties` / `server_url.txt`，包内默认指向 `http://localhost:3456`；
+> 云同步请在登录页「服务器设置」填写实际地址。
+> Debug 包用各机器自带的 debug 签名，与 release 签名不同，互相覆盖安装前需先卸载旧包。
+> **Release 签名密钥丢失将无法发布应用更新，请离线备份 keystore 与密码说明文件。**
 
 ## 快速开始
 
