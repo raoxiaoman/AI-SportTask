@@ -1,6 +1,7 @@
 package pages
 
 import platform.Foundation.NSDateFormatter
+import platform.Foundation.NSCalendarUnitHour
 import platform.Foundation.NSDate
 import platform.Foundation.NSCalendar
 import platform.Foundation.NSDateComponents
@@ -20,4 +21,9 @@ actual fun daysAgoDateString(days: Int): String {
     val formatter = NSDateFormatter()
     formatter.dateFormat = "yyyy-MM-dd"
     return formatter.stringFromDate(date)
+}
+
+actual fun currentHourOfDay(): Int {
+    val calendar = NSCalendar.currentCalendar
+    return calendar.component(NSCalendarUnitHour, fromDate = NSDate()).toInt()
 }
