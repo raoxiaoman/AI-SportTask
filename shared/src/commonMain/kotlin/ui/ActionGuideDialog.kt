@@ -37,6 +37,13 @@ fun ActionGuideDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        // Dialog 自带独立 Window：把它的系统栏同步到当前主题，
+        // 否则全屏详情页会出现深灰状态栏/导航栏，与主页面的沉浸式表现割裂。
+        DialogSystemBarAppearanceEffect(
+            isDark = !AppTheme.colors.isLight,
+            statusBarColor = AppTheme.colors.background,
+            navigationBarColor = AppTheme.colors.surface
+        )
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = AppTheme.colors.background
