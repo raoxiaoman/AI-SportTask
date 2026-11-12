@@ -6,6 +6,9 @@ plugins {
     id("app.cash.sqldelight")
 }
 
+// 与 androidApp 共用同一版本号（CI 由 tag 注入），供设置页「关于」显示。
+val appVersionName: String = findProperty("app.versionName") as String? ?: "1.0.0-dev"
+
 kotlin {
     androidTarget("android")
 
@@ -84,6 +87,10 @@ android {
 
     defaultConfig {
         minSdk = (findProperty("android.minSdk") as String).toInt()
+        buildConfigField("String", "APP_VERSION_NAME", "\"$appVersionName\"")
+    }
+    buildFeatures {
+        buildConfig = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

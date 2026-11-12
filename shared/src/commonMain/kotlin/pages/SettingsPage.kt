@@ -8,6 +8,7 @@ import ui.IconBadge
 import ui.LiteCard
 import ui.PageHeader
 import ui.SectionHeader
+import ui.appVersionName
 import ui.theme.*
 
 import androidx.compose.foundation.background
@@ -396,7 +397,7 @@ fun SettingsScreen(
                         SettingsRow(
                             icon = AppIcons.Info,
                             title = "关于应用",
-                            subtitle = "版本 1.0.0",
+                            subtitle = "版本 ${appVersionName()}",
                             onClick = { showAboutDialog = true }
                         )
                         SettingsRow(
@@ -474,7 +475,7 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(AppDimens.s4))
                 Text(
-                    text = "版本 1.0.0",
+                    text = "版本 ${appVersionName()}",
                     style = MaterialTheme.typography.body1,
                     color = AppTheme.colors.ink
                 )
