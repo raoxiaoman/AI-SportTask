@@ -32,17 +32,17 @@ cd /path/to/sporttask-backend
 
 ## 服务器配置
 
-**后端地址不提交到 git。** 通过以下方式配置：
+**后端地址不硬编码、不提交到 git。** 目前唯一生效的方式是运行时配置：
 
-1. `local.properties`（项目根目录，已 `.gitignore`）：
-   ```
-   api.baseUrl=http://你的服务器IP:3456
-   ```
-   编译时 Gradle 自动生成 `cloud/ServerConfig.kt`。
+- `ServerConfig`（`shared/src/commonMain/kotlin/data/remote/ServerConfig.kt`）默认 `http://localhost:3456`。
+- 登录页底部「服务器设置」→ 填写地址 → 保存，写入本地持久化 `sporttask_server_url`，启动时自动恢复。
+- 设置页「数据与同步 → 服务器地址」显示当前值。
 
-2. Android 首次启动从 `assets/server_url.txt` 读取（已 `.gitignore`）。
+> 历史遗留：`local.properties` 的 `api.baseUrl`、`assets/server_url.txt` 是早期设想，
+> **没有任何 Gradle / Kotlin 代码读取**，不参与构建，请勿再按旧说明配置。
 
-3. 登录页面底部可手动配置服务器地址，保存后自动持久化。
+> 云同步服务端尚未部署。登录页提供「先不登录 · 离线使用」，
+> 本地功能无需账号即可使用；设置页可随时返回登录页启用云同步。
 
 ## 架构说明
 

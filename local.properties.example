@@ -5,5 +5,5 @@
 #
 # cp local.properties.example local.properties
 
-# 后端服务地址（自托管 VPS）
-api.baseUrl=http://localhost:3456
+# 服务器地址不在此配置：请在 App 登录页「服务器设置」填写，地址会持久化到本地。
+# （历史遗留的 api.baseUrl 不参与构建，已移除）

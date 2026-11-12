@@ -2,9 +2,13 @@
 
 轻量级 Node.js + SQLite 后端服务，提供 Auth 认证和数据同步 REST API。
 
-## 部署
+## 部署状态
 
-本项目已部署在 VPS 上，开机自启。详情见 `local.properties` 中的 `api.baseUrl`。
+> **服务端尚未部署 / 联调**：本目录目前是一版可运行的骨架代码，未部署到 VPS，也未与 App 联调。
+> App 默认 `http://localhost:3456`，云同步暂不可用；地址请在 App 登录页「服务器设置」中配置。
+> `local.properties` 的 `api.baseUrl` 是历史遗留的本机备注，Gradle 与 App 均不读取。
+
+本地开发联调可用下方命令手动启动。
 
 ### 手动管理
 
