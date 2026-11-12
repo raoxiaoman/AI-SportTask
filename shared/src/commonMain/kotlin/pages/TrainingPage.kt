@@ -37,6 +37,10 @@ import ui.LiteCard
 import ui.PageHeader
 import ui.PlatformBackHandler
 import ui.SectionHeader
+import ui.ActionGuideDialog
+import ui.ExerciseGuide
+import ui.buildFallbackGuide
+import ui.guideFor
 import data.ActionItem
 import data.TrainingResult
 import data.formatTime
@@ -837,36 +841,12 @@ fun TrainingExecuteScreen(
                 val detailAction = if (isResting)
                     actions.getOrNull(currentActionIndex + 1) ?: currentAction
                 else currentAction
-                AlertDialog(
-                    onDismissRequest = { showDetailDialog = false },
-                    title = { Text(detailAction.name) },
-                    text = {
-                        Column {
-                            Text(
-                                text = if (detailAction.stepsText.isBlank())
-                                    "暂无说明，可在「分组」页编辑此动作补充。"
-                                else detailAction.stepsText,
-                                style = MaterialTheme.typography.body1
-                            )
-                            Spacer(modifier = Modifier.height(AppDimens.s3))
-                            Text(
-                                text = "时长 ${detailAction.defaultTime} 秒 · 组后休息 ${detailAction.restTime} 秒",
-                                style = MaterialTheme.typography.caption,
-                                color = AppTheme.colors.inkSub
-                            )
-                            Spacer(modifier = Modifier.height(AppDimens.s2))
-                            Text(
-                                text = "查看说明时计时仍在继续，需要可先按暂停",
-                                style = MaterialTheme.typography.caption,
-                                color = AppTheme.colors.inkSub
-                            )
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showDetailDialog = false }) {
-                            Text("知道了")
-                        }
-                    }
+                ActionGuideDialog(
+                    action = detailAction,
+                    guide = guideFor(detailAction.name)
+                        ?: buildFallbackGuide(detailAction.name, detailAction.stepsText),
+                    onDismiss = { showDetailDialog = false },
+                    showTimingHint = true
                 )
             }
 
@@ -1027,7 +1007,8 @@ fun TrainingExecuteScreen(
 
                     Spacer(modifier = Modifier.height(AppDimens.s4))
 
-                    // 动作要点卡片：标题 + 正文常驻展开（对齐设计稿）
+                    // 动作要点卡片：一句话摘要 + 完整图解入口
+                    val actionGuide = guideFor(currentAction.name)
                     LiteCard(onClick = { showDetailDialog = true }) {
                         Column(
                             modifier = Modifier
@@ -1048,11 +1029,23 @@ fun TrainingExecuteScreen(
                                     fontWeight = AppTypeWeight.emphasis,
                                     color = AppTheme.colors.ink
                                 )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Text(
+                                    text = "查看完整图解",
+                                    style = MaterialTheme.typography.caption,
+                                    color = AppTheme.colors.brand
+                                )
+                                AppIcon(
+                                    imageVector = AppIcons.Chevron,
+                                    contentDescription = "查看完整图解",
+                                    tint = AppTheme.colors.brand,
+                                    size = AppDimens.iconSmall
+                                )
                             }
                             Spacer(modifier = Modifier.height(AppDimens.s2))
                             Text(
-                                text = currentAction.stepsText.ifBlank {
-                                    "保持关节在中立位，速度均匀；出现刺痛或弹响立即停止，记录疼痛评分。"
+                                text = actionGuide?.summary ?: currentAction.stepsText.ifBlank {
+                                    "保持关节在中立位，速度均匀；出现刺痛或弹响立即停止。"
                                 },
                                 style = MaterialTheme.typography.body2,
                                 color = AppTheme.colors.inkSub

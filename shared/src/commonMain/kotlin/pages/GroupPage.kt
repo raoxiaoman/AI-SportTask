@@ -39,6 +39,11 @@ import ui.FullScreenLoading
 import ui.IconBadge
 import ui.LiteCard
 import ui.PageHeader
+import ui.ActionGuideDialog
+import ui.ExerciseGuide
+import ui.PlatformBackHandler
+import ui.buildFallbackGuide
+import ui.guideFor
 
 // 分组屏幕
 @Composable
@@ -305,6 +310,12 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
     var editingAction by remember { mutableStateOf<ActionItem?>(null) }
     var showEditScreen by remember { mutableStateOf(false) }
 
+    // 查看动作详情（图解）
+    var guideAction by remember { mutableStateOf<ActionItem?>(null) }
+
+    // 物理返回：详情弹窗打开时先关弹窗（Dialog 自带），否则返回分组列表
+    PlatformBackHandler(enabled = !showEditScreen) { onBackClick() }
+
     // 拖拽排序状态
     var draggedIndex by remember { mutableStateOf(-1) }
     var dragOffset by remember { mutableStateOf(0f) }
@@ -467,6 +478,7 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
                             index = index,
                             isDragging = isThisDragged,
                             dragOffsetY = if (isThisDragged) dragOffset else 0f,
+                            onGuideClick = { guideAction = action },
                             onEditClick = {
                                 editingAction = action
                                 showEditScreen = true
@@ -524,6 +536,15 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
                     Spacer(Modifier.height(AppDimens.logoSize))
                 }
         }
+    }
+
+    // 动作详情（图解）弹窗
+    guideAction?.let { action ->
+        ActionGuideDialog(
+            action = action,
+            guide = guideFor(action.name) ?: buildFallbackGuide(action.name, action.stepsText),
+            onDismiss = { guideAction = null }
+        )
     }
 }
 
@@ -623,6 +644,7 @@ fun DraggableActionCard(
     index: Int,
     isDragging: Boolean,
     dragOffsetY: Float,
+    onGuideClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onDragStart: () -> Unit,
@@ -719,6 +741,9 @@ fun DraggableActionCard(
 
             // 操作按钮
             if (!isDragging) {
+                IconButton(onClick = onGuideClick, modifier = Modifier.size(AppDimens.s8)) {
+                    Icon(AppIcons.Book, contentDescription = "查看图解", tint = AppTheme.colors.brandStrong, modifier = Modifier.size(AppDimens.s4))
+                }
                 IconButton(onClick = onEditClick, modifier = Modifier.size(AppDimens.s8)) {
                     Icon(AppIcons.Edit, contentDescription = "编辑", tint = AppTheme.colors.inkSub, modifier = Modifier.size(AppDimens.s4))
                 }
@@ -765,6 +790,9 @@ fun ActionEditScreen(
     var errorMessage by remember { mutableStateOf("") }
 
     val repository = SportTaskRepository
+
+    // 物理返回 = 返回分组详情，不再退出 App
+    PlatformBackHandler(enabled = true) { onBackClick() }
 
     // 如果是编辑模式，获取下一个排序索引
     LaunchedEffect(groupId) {
