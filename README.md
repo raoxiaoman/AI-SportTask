@@ -1,13 +1,15 @@
 # AI SportTask 🏋️
 
 [![Android 自动打包](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml/badge.svg)](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml)
-[![Release v1.0.0](https://img.shields.io/badge/Release-v1.0.0-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.0)
+[![Release v1.0.1](https://img.shields.io/badge/Release-v1.0.1-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.1)
 
 一款基于 Kotlin Multiplatform 的个人运动任务管理与打卡应用，支持 **Android** 和 **iOS**，并配有自托管云端同步后端。
 
-> **最新版本 [v1.0.0](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.0)**（2026-11-12）
-> · [下载签名 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.0/AI-SportTask-v1.0.0-release.apk)
+> **最新版本 [v1.0.1](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.1)**（2026-11-12）
+> · [下载签名 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.1/AI-SportTask-v1.0.1-release.apk)
 > · [全部 Release](https://github.com/raoxiaoman/AI-SportTask/releases)
+>
+> 云同步服务端尚未部署，v1.0.1 起正式签名包可在登录页点「先不登录 · 离线使用」直接进入主界面。
 
 ## 核心功能
 
@@ -77,20 +79,20 @@
 |---|---|
 | push / PR 到 `main` | 303 项单测 + Debug APK（artifact 保留 30 天） |
 | 手动运行 workflow（可填 `version`、勾 `build_release`） | 追加**签名 Release APK**，用于验证发版链路 |
-| 推送 `v*` 标签，如 `v1.0.0` | 签名 Release APK + **GitHub Release**（只附正式签名包） |
+| 推送 `v*` 标签，如 `v1.0.1` | 签名 Release APK + **GitHub Release**（只附正式签名包） |
 
 - 正式版本到 [Releases](https://github.com/raoxiaoman/AI-SportTask/releases) 下载 `AI-SportTask-vX.Y.Z-release.apk`。
 - 日常构建在 [Actions 页面](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml) 的 **Artifacts** 下载 `AI-SportTask-apk-<run>`（含 debug 包，手动构建时另含 release 包）与测试报告。
 
-**版本号由 tag 驱动**：`v1.0.0` → `versionName=1.0.0`、`versionCode=GITHUB_RUN_NUMBER`（自动递增）；APK 文件名、Release 标题、设置页「关于」三处同源（Android 读 `BuildConfig`、iOS 读 `Info.plist`）。本地未指定时默认 `1.0.0-dev` / `1`。
+**版本号由 tag 驱动**：`v1.0.1` → `versionName=1.0.1`、`versionCode=GITHUB_RUN_NUMBER`（自动递增）；APK 文件名、Release 标题、设置页「关于」三处同源（Android 读 `BuildConfig`、iOS 读 `Info.plist`）。本地未指定时默认 `1.0.0-dev` / `1`。
 
 **签名**：release 密钥保存在仓库 Secrets 中，不进入代码库。正式版本之间可直接覆盖安装；Debug 包与正式包签名互不兼容。
 
 发版命令（用 annotated tag，便于记录发版说明）：
 
 ```bash
-git tag -a v1.0.1 -m "AI SportTask v1.0.1"
-git push origin v1.0.1
+git tag -a v1.0.2 -m "AI SportTask v1.0.2"
+git push origin v1.0.2
 # 约 5 分钟后自动生成 GitHub Release；generate_release_notes 会汇总本次变更
 ```
 
@@ -99,12 +101,12 @@ git push origin v1.0.1
 ```bash
 # Debug（默认，无需密钥）
 ./gradlew :shared:testDebugUnitTest :androidApp:assembleDebug \
-  -Papp.versionName=1.0.0 -Papp.versionCode=42
+  -Papp.versionName=1.0.1 -Papp.versionCode=42
 # 产物：androidApp/build/outputs/apk/debug/androidApp-debug.apk
 
 # 签名 Release：额外提供 4 个属性（推荐用 ORG_GRADLE_PROJECT_* 环境变量，避免密码进入命令行）
 # keystorePath / keystoreStorePassword / keystoreKeyAlias / keystoreKeyPassword
-./gradlew :androidApp:assembleRelease -Papp.versionName=1.0.0 -Papp.versionCode=42
+./gradlew :androidApp:assembleRelease -Papp.versionName=1.0.1 -Papp.versionCode=42
 ```
 
 > CI 不包含任何本地配置，包内默认指向 `http://localhost:3456`；云同步请在登录页「服务器设置」填写实际地址。
@@ -144,9 +146,9 @@ cd backend
 # 在 Xcode 中打开 iosApp/ 项目
 ```
 
-也可以直接安装 [v1.0.0 签名 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.0/AI-SportTask-v1.0.0-release.apk)：
+也可以直接安装 [v1.0.1 签名 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.1/AI-SportTask-v1.0.1-release.apk)：
 ```bash
-adb install -r AI-SportTask-v1.0.0-release.apk
+adb install -r AI-SportTask-v1.0.1-release.apk
 ```
 
 ## 项目结构
@@ -230,7 +232,13 @@ adb install -r AI-SportTask-v1.0.0-release.apk
 - GitHub Actions 自动打包：303 项单测、Debug / 签名 Release APK、密钥 Secrets 化
 - 版本号由 tag 驱动，APK 文件名 / Release 标题 / App 关于页同源
 
-### 🔜 v1.0.1 — 自动同步
+### ✅ v1.0.1 — 正式签名包修复（2026-11-12）
+- 修复云同步服务端未部署时正式签名包卡在登录页、无法进入主界面的问题：登录页新增「先不登录 · 离线使用」
+- 离线标记本地持久化，杀进程重启后免重复选择；设置页可返回登录页
+- 校正文档：`api.baseUrl` 为历史死配置，服务端默认地址改为本机 `localhost:3456`
+- 正式 Release 只附签名包；v1.0.1 与 v1.0.0 同一签名密钥，可直接覆盖安装
+
+### 🔜 后续 — 自动同步
 - 本地 CRUD 操作串联 markDirty
 - 离线变更暂存队列
 - 恢复网络时自动补发
