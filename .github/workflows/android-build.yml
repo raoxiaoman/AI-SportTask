@@ -182,9 +182,24 @@ jobs:
           name: AI-SportTask-apk-${{ github.run_number }}
           path: ci-output
 
+      # 正式 Release 只附签名包；debug 包保留在 Actions Artifacts 中供日常自测
       - name: 创建 Release
         uses: softprops/action-gh-release@v2
         with:
           name: AI SportTask ${{ github.ref_name }}
-          files: ci-output/*.apk
+          files: ci-output/AI-SportTask-v*-release.apk
+          body: |
+            ## 下载
+
+            `AI-SportTask-${{ github.ref_name }}-release.apk` 为正式签名包，可直接安装。
+
+            ## 安装注意
+
+            - 若此前安装过 **Debug 包**，签名不同，需先卸载旧版再安装（卸载会清空本地数据，请先在「设置 → 导出数据」备份 JSON）。
+            - 之后的版本可直接覆盖安装，无需卸载。
+            - 云同步默认指向本机地址，如需同步请在登录页「服务器设置」填写实际服务器地址。
+
+            ## 本次变更
+
+            详见下方自动生成的更新说明。
           generate_release_notes: true
