@@ -1,6 +1,7 @@
 package pages
 import ui.AppIcon
 import ui.AppIcons
+import ui.AppTextField
 import ui.theme.*
 
 
@@ -116,20 +117,20 @@ fun LoginScreen(
             Text(
                 text = "智能运动任务管理",
                 style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                color = AppTheme.colors.inkSub
             )
 
             Spacer(modifier = Modifier.height(AppDimens.s10))
 
             // 邮箱输入
-            OutlinedTextField(
+            AppTextField(
                 value = email,
                 onValueChange = {
                     email = it
                     errorMessage = null
                 },
-                label = { Text("邮箱") },
-                placeholder = { Text("your@email.com") },
+                label = "邮箱",
+                placeholder = "your@email.com",
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
@@ -142,14 +143,14 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(AppDimens.s3))
 
             // 密码输入
-            OutlinedTextField(
+            AppTextField(
                 value = password,
                 onValueChange = {
                     password = it
                     errorMessage = null
                 },
-                label = { Text("密码") },
-                placeholder = { Text("至少 6 位") },
+                label = "密码",
+                placeholder = "至少 6 位",
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
@@ -163,13 +164,13 @@ fun LoginScreen(
             // 注册模式下的确认密码
             if (!isLoginMode) {
                 Spacer(modifier = Modifier.height(AppDimens.s3))
-                OutlinedTextField(
+                AppTextField(
                     value = confirmPassword,
                     onValueChange = {
                         confirmPassword = it
                         errorMessage = null
                     },
-                    label = { Text("确认密码") },
+                    label = "确认密码",
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
@@ -186,7 +187,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(AppDimens.s2))
                 Text(
                     text = errorMessage!!,
-                    color = MaterialTheme.colors.error,
+                    color = AppTheme.colors.danger,
                     style = MaterialTheme.typography.body2
                 )
             }
@@ -198,19 +199,24 @@ fun LoginScreen(
                 onClick = { submit() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(AppDimens.s12),
-                enabled = !isLoading
+                    .height(AppDimens.buttonHeight),
+                enabled = !isLoading,
+                shape = AppShapes.button,
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = AppTheme.colors.brandStrong,
+                    contentColor = AppTheme.colors.onBrand
+                )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(AppDimens.s6),
-                        color = MaterialTheme.colors.onPrimary,
+                        color = AppTheme.colors.onBrand,
                         strokeWidth = AppDimens.hairline
                     )
                 } else {
                     Text(
                         text = if (isLoginMode) "登 录" else "注 册",
-                        fontSize = AppTypeScale.body
+                        style = MaterialTheme.typography.subtitle1
                     )
                 }
             }
@@ -240,17 +246,17 @@ fun LoginScreen(
                 Text(
                     text = if (showServerConfig) "收起服务器设置" else "服务器设置",
                     style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                    color = AppTheme.colors.inkMuted
                 )
             }
 
             if (showServerConfig) {
                 Spacer(modifier = Modifier.height(AppDimens.s2))
-                OutlinedTextField(
+                AppTextField(
                     value = serverUrl,
                     onValueChange = { serverUrl = it },
-                    label = { Text("服务器地址") },
-                    placeholder = { Text("http://IP:3456") },
+                    label = "服务器地址",
+                    placeholder = "http://IP:3456",
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isLoading
@@ -261,12 +267,16 @@ fun LoginScreen(
                         ServerConfig.setBaseUrl(serverUrl)
                         errorMessage = null
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(AppDimens.buttonHeight),
+                    shape = AppShapes.button,
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = MaterialTheme.colors.secondary
+                        backgroundColor = AppTheme.colors.brandStrong,
+                        contentColor = AppTheme.colors.onBrand
                     )
                 ) {
-                    Text("保存服务器地址")
+                    Text("保存服务器地址", style = MaterialTheme.typography.subtitle2)
                 }
             }
         }
