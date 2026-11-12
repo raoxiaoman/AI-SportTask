@@ -1,5 +1,7 @@
 # AI SportTask 🏋️
 
+[![Android 自动打包](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml/badge.svg)](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml)
+
 一款基于 Kotlin Multiplatform 的个人运动任务管理与打卡应用，支持 **Android** 和 **iOS**，并配有自托管云端同步后端。
 
 ## 核心功能
@@ -55,6 +57,22 @@
 | **认证** | JWT (bcrypt + jsonwebtoken) |
 | **后端** | Node.js + Express + SQLite |
 | **跨平台** | expect/actual 模式 |
+
+## 自动打包（GitHub Actions）
+
+推送或提交 PR 到 `main`、手动触发 workflow，都会自动执行 `303` 项单元测试并打出 **Debug APK**（可直接安装）。
+在 [Actions 页面](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml) 打开对应运行，从 **Artifacts** 下载 `AI-SportTask-debug-<run>`（保留 30 天）；
+推送 `v*` 标签会额外创建 GitHub Release 并附上 APK。
+
+本地等价命令：
+
+```bash
+./gradlew :shared:testDebugUnitTest :androidApp:assembleDebug
+# 产物：androidApp/build/outputs/apk/debug/androidApp-debug.apk
+```
+
+> CI 不读取 gitignored 的 `local.properties` / `server_url.txt`，打出的包默认指向 `http://localhost:3456`；
+> 云同步请在登录页「服务器设置」中填写实际地址（本机配置不会进仓库）。
 
 ## 快速开始
 
