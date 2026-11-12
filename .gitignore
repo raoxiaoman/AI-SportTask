@@ -14,3 +14,13 @@ iosApp/iosApp.xcodeproj/*
 # 本地服务器配置（包含 IP 地址，不提交到 git）
 androidApp/src/main/assets/server_url.txt
 *.local.*
+
+# 签名密钥与凭据：一律不进仓库（release 密钥只存本机与仓库 Secrets）
+*.jks
+*.keystore
+*.p12
+*.b64
+keystore.properties
+signing.properties
+.env
+.env.*
