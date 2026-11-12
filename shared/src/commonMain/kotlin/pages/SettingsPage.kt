@@ -36,7 +36,8 @@ import kotlinx.coroutines.withContext
 fun SettingsScreen(
     onThemeChange: ((Boolean) -> Unit)? = null,
     authService: AuthService? = null,
-    onLogout: (() -> Unit)? = null
+    onLogout: (() -> Unit)? = null,
+    onRequestLogin: (() -> Unit)? = null
 ) {
     val repository = SportTaskRepository
     val scope = rememberCoroutineScope()
@@ -327,8 +328,10 @@ fun SettingsScreen(
                         } else {
                             SettingsRow(
                                 icon = AppIcons.Key,
-                                title = "未登录",
-                                subtitle = "登录后可同步数据到云端"
+                                title = "未登录 · 离线使用",
+                                subtitle = if (onRequestLogin != null) "点此登录以启用云同步"
+                                else "登录后可同步数据到云端",
+                                onClick = onRequestLogin
                             )
                         }
                         SettingsRow(

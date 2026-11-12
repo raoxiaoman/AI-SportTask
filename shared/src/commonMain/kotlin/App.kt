@@ -18,6 +18,7 @@ import data.Achievement
 import data.AchievementManager
 import data.SportTaskRepository
 import data.remote.AuthService
+import data.remote.OfflineMode
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import pages.*
@@ -42,13 +43,23 @@ fun App() {
             navigationBarColor = AppTheme.colors.surface
         )
         val authService = remember { AuthService() }
-        // 登录态同步读取，首帧直接渲染真实页面，避免冷启动空白转圈
-        var isLoggedIn by remember { mutableStateOf(authService.restoreSession()) }
+        // 首屏同步判定：已登录，或此前选择过「离线使用」，都直接进入主界面。
+        // 离线标记只影响登录拦截，不伪造登录态，设置页仍显示「未登录」。
+        var showMainApp by remember {
+            mutableStateOf(authService.restoreSession() || OfflineMode.isEnabled())
+        }
 
-        if (!isLoggedIn) {
+        if (!showMainApp) {
             LoginScreen(
                 authService = authService,
-                onLoginSuccess = { isLoggedIn = true }
+                onLoginSuccess = {
+                    OfflineMode.setEnabled(false)
+                    showMainApp = true
+                },
+                onOfflineStart = {
+                    OfflineMode.setEnabled(true)
+                    showMainApp = true
+                }
             )
         } else {
             MainAppScreen(
@@ -59,7 +70,12 @@ fun App() {
                 },
                 onLogout = {
                     authService.logout()
-                    isLoggedIn = false
+                    OfflineMode.setEnabled(false)
+                    showMainApp = false
+                },
+                onRequestLogin = {
+                    OfflineMode.setEnabled(false)
+                    showMainApp = false
                 }
             )
         }
@@ -75,7 +91,8 @@ fun App() {
 fun MainAppScreen(
     authService: AuthService,
     onThemeChange: (Boolean) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onRequestLogin: () -> Unit
 ) {
     var showAchievements by remember { mutableStateOf(false) }
     var newAchievements by remember { mutableStateOf<List<Achievement>>(emptyList()) }
@@ -161,7 +178,8 @@ fun MainAppScreen(
                 4 -> SettingsScreen(
                     onThemeChange = onThemeChange,
                     authService = authService,
-                    onLogout = onLogout
+                    onLogout = onLogout,
+                    onRequestLogin = onRequestLogin
                 )
                 else -> TrainingScreen(onImmersiveChange = { immersive = it })
             }

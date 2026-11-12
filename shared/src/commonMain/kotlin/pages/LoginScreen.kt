@@ -26,11 +26,13 @@ import kotlinx.coroutines.launch
  *
  * @param authService 认证服务实例
  * @param onLoginSuccess 登录成功回调
+ * @param onOfflineStart 选择「先不登录 · 离线使用」回调（服务端未部署时使用本地功能）
  */
 @Composable
 fun LoginScreen(
     authService: AuthService,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onOfflineStart: () -> Unit
 ) {
     var isLoginMode by remember { mutableStateOf(true) }
     var email by remember { mutableStateOf("") }
@@ -236,6 +238,33 @@ fun LoginScreen(
                     else "已有账号？点击登录"
                 )
             }
+
+            Spacer(modifier = Modifier.height(AppDimens.s4))
+
+            // 离线使用：服务端未部署时，本地功能无需账号即可使用
+            OutlinedButton(
+                onClick = onOfflineStart,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(AppDimens.buttonHeight),
+                enabled = !isLoading,
+                shape = AppShapes.button,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    backgroundColor = AppTheme.colors.surface,
+                    contentColor = AppTheme.colors.brand
+                )
+            ) {
+                Text(
+                    text = "先不登录 · 离线使用",
+                    style = MaterialTheme.typography.subtitle2
+                )
+            }
+            Spacer(modifier = Modifier.height(AppDimens.s1))
+            Text(
+                text = "本地功能无需账号；云同步可稍后在设置页开启",
+                style = MaterialTheme.typography.caption,
+                color = AppTheme.colors.inkMuted
+            )
 
             Spacer(modifier = Modifier.height(AppDimens.s2))
 
