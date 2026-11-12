@@ -1,5 +1,9 @@
 package pages
+import ui.AppConfirmDialog
+import ui.AppDialog
+import ui.AppDialogTextField
 import ui.AppIcon
+import ui.AppTextField
 import ui.AppIcons
 import ui.theme.*
 
@@ -157,143 +161,103 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
         // 删除分组对话框
         if (showDeleteDialog && currentDeletingGroup != null) {
             val deletingGroup = currentDeletingGroup!!
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                title = { Text("删除分组") },
-                text = {
-                    Text("确定要删除分组 \"${deletingGroup.name}\" 吗？")
+            AppConfirmDialog(
+                title = "删除分组",
+                message = "确定要删除分组「${deletingGroup.name}」吗？分组下的动作也会一并删除，此操作无法撤销。",
+                onDismissRequest = {
+                    currentDeletingGroup = null
+                    showDeleteDialog = false
                 },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                val groupToDelete = currentDeletingGroup ?: return@launch
-                                // 删除数据库中的分组
-                                repository.deleteGroup(groupToDelete.id)
-
-                                // 重新加载分组列表
-                                loadGroups(repository) { groups = it }
-
-                                // 重置状态并关闭对话框
-                                currentDeletingGroup = null
-                                showDeleteDialog = false
-                            }
-                        }
-                    ) {
-                        Text("删除")
-                    }
-                },
-                dismissButton = {
-                    Button(onClick = {
+                onConfirm = {
+                    scope.launch {
+                        val groupToDelete = currentDeletingGroup ?: return@launch
+                        repository.deleteGroup(groupToDelete.id)
+                        loadGroups(repository) { groups = it }
                         currentDeletingGroup = null
                         showDeleteDialog = false
-                    }) {
-                        Text("取消")
                     }
-                }
+                },
+                confirmLabel = "删除",
+                danger = true
             )
         }
 
         // 编辑分组对话框
         if (showEditDialog && currentEditingGroup != null) {
-            AlertDialog(
-                onDismissRequest = { showEditDialog = false },
-                title = { Text("编辑分组") },
-                text = {
-                    Column {
-                        Text("请输入新的分组名称：")
-                        Spacer(modifier = Modifier.height(AppDimens.s2))
-                        TextField(
-                            value = editGroupName,
-                            onValueChange = { editGroupName = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("分组名称") }
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (editGroupName.isNotBlank()) {
-                                scope.launch {
-                                    val groupToEdit = currentEditingGroup ?: return@launch
-                                    // 更新数据库
-                                    repository.updateGroupName(groupToEdit.id, editGroupName)
-
-                                    // 重新加载分组列表
-                                    loadGroups(repository) { groups = it }
-                                }
-
-                                // 重置表单并关闭对话框
-                                editGroupName = ""
-                                currentEditingGroup = null
-                                showEditDialog = false
-                            }
+            val closeEdit = {
+                editGroupName = ""
+                currentEditingGroup = null
+                showEditDialog = false
+            }
+            AppDialog(
+                onDismissRequest = closeEdit,
+                title = "编辑分组",
+                confirmLabel = "保存",
+                confirmEnabled = editGroupName.isNotBlank(),
+                dismissLabel = "取消",
+                onDismiss = closeEdit,
+                onConfirm = {
+                    if (editGroupName.isNotBlank()) {
+                        scope.launch {
+                            val groupToEdit = currentEditingGroup ?: return@launch
+                            repository.updateGroupName(groupToEdit.id, editGroupName)
+                            loadGroups(repository) { groups = it }
                         }
-                    ) {
-                        Text("保存")
-                    }
-                },
-                dismissButton = {
-                    Button(onClick = {
-                        editGroupName = ""
-                        currentEditingGroup = null
-                        showEditDialog = false
-                    }) {
-                        Text("取消")
+                        closeEdit()
                     }
                 }
-            )
+            ) {
+                Text(
+                    text = "请输入新的分组名称：",
+                    style = MaterialTheme.typography.body1,
+                    color = AppTheme.colors.inkSub
+                )
+                Spacer(modifier = Modifier.height(AppDimens.s2))
+                AppDialogTextField(
+                    value = editGroupName,
+                    onValueChange = { editGroupName = it },
+                    label = "分组名称",
+                    singleLine = true
+                )
+            }
         }
 
         // 添加分组对话框
         if (showAddDialog) {
-            AlertDialog(
-                onDismissRequest = { showAddDialog = false },
-                title = { Text("创建新分组") },
-                text = {
-                    Column {
-                        Text("请输入分组名称：")
-                        Spacer(modifier = Modifier.height(AppDimens.s2))
-                        TextField(
-                            value = groupName,
-                            onValueChange = { groupName = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("分组名称") }
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            // 创建分组
-                            if (groupName.isNotBlank()) {
-                                scope.launch {
-                                    // 添加到数据库
-                                    repository.addGroup(groupName, todayDateString())
-
-                                    // 重新加载分组列表
-                                    loadGroups(repository) { groups = it }
-                                }
-
-                                // 重置表单并关闭对话框
-                                groupName = ""
-                                showAddDialog = false
-                            }
+            val closeAdd = {
+                groupName = ""
+                showAddDialog = false
+            }
+            AppDialog(
+                onDismissRequest = closeAdd,
+                title = "创建新分组",
+                confirmLabel = "创建",
+                confirmEnabled = groupName.isNotBlank(),
+                dismissLabel = "取消",
+                onDismiss = closeAdd,
+                onConfirm = {
+                    if (groupName.isNotBlank()) {
+                        scope.launch {
+                            repository.addGroup(groupName, todayDateString())
+                            loadGroups(repository) { groups = it }
                         }
-                    ) {
-                        Text("创建")
-                    }
-                },
-                dismissButton = {
-                    Button(onClick = {
-                        groupName = ""
-                        showAddDialog = false
-                    }) {
-                        Text("取消")
+                        closeAdd()
                     }
                 }
-            )
+            ) {
+                Text(
+                    text = "请输入分组名称：",
+                    style = MaterialTheme.typography.body1,
+                    color = AppTheme.colors.inkSub
+                )
+                Spacer(modifier = Modifier.height(AppDimens.s2))
+                AppDialogTextField(
+                    value = groupName,
+                    onValueChange = { groupName = it },
+                    label = "分组名称",
+                    singleLine = true
+                )
+            }
         }
     }
 }
@@ -842,33 +806,33 @@ fun ActionEditScreen(
                 verticalArrangement = Arrangement.spacedBy(AppDimens.s3)
             ) {
             // 动作名称
-            OutlinedTextField(
+            AppTextField(
                 value = name,
                 onValueChange = {
                     name = it
                     nameError = false
                 },
-                label = { Text("动作名称 *") },
+                label = "动作名称 *",
                 modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
                 isError = nameError
             )
 
             if (nameError) {
                 Text(
                     text = "请输入动作名称",
-                    color = MaterialTheme.colors.error,
+                    color = AppTheme.colors.danger,
                     style = MaterialTheme.typography.caption
                 )
             }
 
             // 步骤说明
-            OutlinedTextField(
+            AppTextField(
                 value = stepsText,
                 onValueChange = { stepsText = it },
-                label = { Text("步骤说明") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(AppDimens.chartHeight),
+                label = "步骤说明",
+                modifier = Modifier.fillMaxWidth(),
+                minHeight = AppDimens.formTextAreaHeight,
                 maxLines = 5
             )
 
@@ -877,45 +841,48 @@ fun ActionEditScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(AppDimens.s4)
             ) {
-                OutlinedTextField(
+                AppTextField(
                     value = defaultTime,
                     onValueChange = { newValue: String ->
                         defaultTime = newValue.filter { ch: Char -> ch.isDigit() }
                         timeError = false
                     },
-                    label = { Text("默认时长(秒) *") },
+                    label = "默认时长(秒) *",
                     modifier = Modifier.weight(1f),
+                    singleLine = true,
                     isError = timeError
                 )
 
-                OutlinedTextField(
+                AppTextField(
                     value = restTime,
                     onValueChange = { newValue: String ->
                         restTime = newValue.filter { ch: Char -> ch.isDigit() }
                         timeError = false
                     },
-                    label = { Text("休息时长(秒) *") },
+                    label = "休息时长(秒) *",
                     modifier = Modifier.weight(1f),
+                    singleLine = true,
                     isError = timeError
                 )
             }
 
             // 排序索引
-            OutlinedTextField(
+            AppTextField(
                 value = orderIndex,
                 onValueChange = { newValue: String ->
                     orderIndex = newValue.filter { ch: Char -> ch.isDigit() }
                     timeError = false
                 },
-                label = { Text("排序索引") },
+                label = "排序索引",
                 modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
                 isError = timeError
             )
 
             if (timeError) {
                 Text(
                     text = errorMessage.ifEmpty { "请输入有效数字" },
-                    color = MaterialTheme.colors.error,
+                    color = AppTheme.colors.danger,
                     style = MaterialTheme.typography.caption
                 )
             }
@@ -961,10 +928,16 @@ fun ActionEditScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = AppShapes.button
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(AppDimens.buttonHeight),
+                shape = AppShapes.button,
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = AppTheme.colors.brandStrong,
+                    contentColor = AppTheme.colors.onBrand
+                )
             ) {
-                Text("保存")
+                Text("保存", style = MaterialTheme.typography.subtitle1)
             }
         }
     }

@@ -1,28 +1,17 @@
 package ui
-import ui.AppIcon
-import ui.AppIcons
-import ui.theme.*
 
-
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import data.Achievement
+import ui.theme.*
 
 /**
- * 成就弹窗组件 — 训练完成后展示新解锁成就
+ * 成就弹窗 — 训练完成后展示新解锁成就。
+ * 容器、标题与按钮统一走 [AppDialog]，内容只负责成就列表。
  */
 @Composable
 fun AchievementDialog(
@@ -31,65 +20,55 @@ fun AchievementDialog(
 ) {
     if (achievements.isEmpty()) return
 
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
-        shape = AppShapes.dialog,
-        title = {
-            Text(
-                text = "新成就解锁！",
-                style = MaterialTheme.typography.h5,
-                fontWeight = AppTypeWeight.emphasis,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-        },
-        text = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(AppDimens.s4)
+        title = "新成就解锁！",
+        subtitle = "坚持训练，收获了 ${achievements.size} 枚新徽章",
+        confirmLabel = "太棒了，继续加油",
+        onConfirm = onDismiss
+    ) {
+        achievements.forEachIndexed { index, achievement ->
+            Surface(
+                shape = AppShapes.button,
+                color = AppTheme.colors.brandSoft
             ) {
-                achievements.forEachIndexed { index, ach ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // 成就图标
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(AppDimens.s3),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = achievement.icon,
+                        fontSize = AppTypeScale.achievementIcon,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(AppDimens.buttonHeight)
+                    )
+                    Spacer(modifier = Modifier.width(AppDimens.s3))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = ach.icon,
-                            fontSize = AppTypeScale.achievementIcon,
-                            modifier = Modifier.width(AppDimens.buttonHeight)
+                            text = achievement.title,
+                            style = MaterialTheme.typography.subtitle1,
+                            fontWeight = AppTypeWeight.emphasis,
+                            color = AppTheme.colors.ink
                         )
-
-                        Spacer(Modifier.width(AppDimens.s2))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = ach.title,
-                                style = MaterialTheme.typography.subtitle1,
-                                fontWeight = AppTypeWeight.emphasis,
-                                color = MaterialTheme.colors.primary
-                            )
-                            Text(
-                                text = ach.description,
-                                style = MaterialTheme.typography.caption,
-                                color = AppTheme.colors.inkSub
-                            )
-                        }
+                        Text(
+                            text = achievement.description,
+                            style = MaterialTheme.typography.body2,
+                            color = AppTheme.colors.inkSub
+                        )
                     }
-
-                    if (index < achievements.size - 1) {
-                        Divider(color = MaterialTheme.colors.primary.copy(alpha = 0.1f))
-                    }
+                    AppIcon(
+                        imageVector = AppIcons.Check,
+                        contentDescription = null,
+                        tint = AppTheme.colors.success,
+                        size = AppDimens.iconSmall
+                    )
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("太棒了！继续加油")
+            if (index < achievements.size - 1) {
+                Spacer(modifier = Modifier.height(AppDimens.s2))
             }
         }
-    )
+    }
 }

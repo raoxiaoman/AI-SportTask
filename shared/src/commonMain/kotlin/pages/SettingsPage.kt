@@ -1,4 +1,7 @@
 package pages
+import ui.AppConfirmDialog
+import ui.AppDialog
+import ui.AppDialogTextField
 import ui.AppIcon
 import ui.AppIcons
 import ui.IconBadge
@@ -453,218 +456,174 @@ fun SettingsScreen(
 
     // 关于对话框
     if (showAboutDialog) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { showAboutDialog = false },
-            title = { Text("AI SportTask") },
-            text = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    AppIcon(
-                        imageVector = AppIcons.Training,
-                        contentDescription = null,
-                        size = AppDimens.iconHero,
-                        tint = AppTheme.colors.brand
-                    )
-                    Spacer(modifier = Modifier.height(AppDimens.s4))
-                    Text(
-                        text = "版本 1.0.0",
-                        style = MaterialTheme.typography.body1
-                    )
-                    Text(
-                        text = "一款智能健身任务管理应用",
-                        style = MaterialTheme.typography.body2,
-                        color = AppTheme.colors.inkSub
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showAboutDialog = false }) {
-                    Text("确定")
-                }
+            title = "AI SportTask",
+            confirmLabel = "知道了",
+            onConfirm = { showAboutDialog = false }
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                AppIcon(
+                    imageVector = AppIcons.Training,
+                    contentDescription = null,
+                    size = AppDimens.iconHero,
+                    tint = AppTheme.colors.brand
+                )
+                Spacer(modifier = Modifier.height(AppDimens.s4))
+                Text(
+                    text = "版本 1.0.0",
+                    style = MaterialTheme.typography.body1,
+                    color = AppTheme.colors.ink
+                )
+                Text(
+                    text = "一款智能健身任务管理应用",
+                    style = MaterialTheme.typography.body2,
+                    color = AppTheme.colors.inkSub
+                )
             }
-        )
+        }
     }
 
     // 清除数据确认对话框
     if (showClearDataDialog) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { showClearDataDialog = false },
-            title = { Text("确认清除") },
-            text = {
-                Column {
-                    Text("确定要删除以下所有数据吗？此操作无法撤销。")
-                    Spacer(modifier = Modifier.height(AppDimens.s2))
-                    Text(
-                        text = "• $totalGroups 个训练分组",
-                        style = MaterialTheme.typography.body2,
-                        color = AppTheme.colors.inkSub
-                    )
-                    Text(
-                        text = "• $totalActions 个训练动作",
-                        style = MaterialTheme.typography.body2,
-                        color = AppTheme.colors.inkSub
-                    )
-                    Text(
-                        text = "• $totalCheckins 条打卡记录",
-                        style = MaterialTheme.typography.body2,
-                        color = AppTheme.colors.inkSub
-                    )
-                }
-            },
-            confirmButton = {
-                if (isClearing) {
-                    CircularProgressIndicator(modifier = Modifier.size(AppDimens.s6))
-                } else {
-                    TextButton(
-                        onClick = {
-                            isClearing = true
-                            scope.launch {
-                                withContext(Dispatchers.Default) {
-                                    repository.clearAllData()
-                                }
-                                isClearing = false
-                                showClearDataDialog = false
-                                loadStats()
-                                showSuccessMessage = true
-                            }
-                        }
-                    ) {
-                        Text("确定", color = AppTheme.colors.danger)
+            title = "确认清除",
+            confirmLabel = "清除",
+            confirmDanger = true,
+            busy = isClearing,
+            dismissLabel = "取消",
+            onDismiss = { showClearDataDialog = false },
+            onConfirm = {
+                isClearing = true
+                scope.launch {
+                    withContext(Dispatchers.Default) {
+                        repository.clearAllData()
                     }
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showClearDataDialog = false },
-                    enabled = !isClearing
-                ) {
-                    Text("取消")
+                    isClearing = false
+                    showClearDataDialog = false
+                    loadStats()
+                    showSuccessMessage = true
                 }
             }
-        )
+        ) {
+            Text(
+                text = "确定要删除以下所有数据吗？此操作无法撤销。",
+                style = MaterialTheme.typography.body1,
+                color = AppTheme.colors.inkSub
+            )
+            Spacer(modifier = Modifier.height(AppDimens.s2))
+            listOf(
+                "$totalGroups 个训练分组",
+                "$totalActions 个训练动作",
+                "$totalCheckins 条打卡记录"
+            ).forEach { line ->
+                Text(
+                    text = "• $line",
+                    style = MaterialTheme.typography.body2,
+                    color = AppTheme.colors.inkSub
+                )
+            }
+        }
     }
 
     // 导出数据对话框
     if (showExportDialog) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { showExportDialog = false },
-            title = { Text("导出数据") },
-            text = {
-                Column {
-                    Text(
-                        text = "数据已导出为 JSON 格式。",
-                        style = MaterialTheme.typography.body2
-                    )
-                    Spacer(modifier = Modifier.height(AppDimens.s2))
-                    Text(
-                        text = "共 $totalGroups 个分组、$totalActions 个动作、$totalCheckins 条记录",
-                        style = MaterialTheme.typography.body2,
-                        color = AppTheme.colors.inkSub
-                    )
-                    Spacer(modifier = Modifier.height(AppDimens.s4))
-                    OutlinedTextField(
-                        value = exportJson,
-                        onValueChange = {},
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(AppDimens.progressRing),
-                        readOnly = true
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showExportDialog = false }) {
-                    Text("关闭")
-                }
-            }
-        )
+            title = "导出数据",
+            confirmLabel = "关闭",
+            onConfirm = { showExportDialog = false }
+        ) {
+            Text(
+                text = "数据已导出为 JSON 格式。",
+                style = MaterialTheme.typography.body1,
+                color = AppTheme.colors.inkSub
+            )
+            Spacer(modifier = Modifier.height(AppDimens.s1))
+            Text(
+                text = "共 $totalGroups 个分组、$totalActions 个动作、$totalCheckins 条记录",
+                style = MaterialTheme.typography.body2,
+                color = AppTheme.colors.inkMuted
+            )
+            Spacer(modifier = Modifier.height(AppDimens.s4))
+            AppDialogTextField(
+                value = exportJson,
+                onValueChange = {},
+                readOnly = true,
+                minHeight = AppDimens.dialogTextAreaHeight
+            )
+        }
     }
 
     // 导入数据对话框
     if (showImportDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showImportDialog = false
-                importJson = ""
-                importResult = null
-            },
-            title = { Text("导入数据") },
-            text = {
-                Column {
-                    Text(
-                        text = "请粘贴 JSON 数据：",
-                        style = MaterialTheme.typography.body2
-                    )
-                    Spacer(modifier = Modifier.height(AppDimens.s2))
-                    OutlinedTextField(
-                        value = importJson,
-                        onValueChange = { importJson = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(AppDimens.progressRingSmall),
-                        placeholder = { Text("粘贴 JSON 数据...") }
-                    )
-
-                    if (importResult != null) {
-                        Spacer(modifier = Modifier.height(AppDimens.s4))
-                        if (importResult!!.success) {
-                            Text(
-                                text = "导入成功！",
-                                style = MaterialTheme.typography.body1,
-                                color = AppTheme.colors.success
-                            )
-                            Text(
-                                text = "分组: ${importResult!!.groupsImported}, 动作: ${importResult!!.actionsImported}, 打卡: ${importResult!!.checkinsImported}",
-                                style = MaterialTheme.typography.body2,
-                                color = AppTheme.colors.inkSub
-                            )
-                        } else {
-                            Text(
-                                text = "导入失败: ${importResult!!.errorMessage}",
-                                style = MaterialTheme.typography.body1,
-                                color = AppTheme.colors.danger
-                            )
+        val closeImport = {
+            showImportDialog = false
+            importJson = ""
+            importResult = null
+        }
+        AppDialog(
+            onDismissRequest = closeImport,
+            title = "导入数据",
+            confirmLabel = "导入",
+            confirmEnabled = importJson.isNotBlank(),
+            busy = isImporting,
+            dismissLabel = "取消",
+            onDismiss = closeImport,
+            onConfirm = {
+                if (importJson.isNotBlank()) {
+                    isImporting = true
+                    scope.launch {
+                        importResult = withContext(Dispatchers.Default) {
+                            repository.importDataFromJson(importJson)
+                        }
+                        isImporting = false
+                        if (importResult?.success == true) {
+                            loadStats()
                         }
                     }
                 }
-            },
-            confirmButton = {
-                if (isImporting) {
-                    CircularProgressIndicator(modifier = Modifier.size(AppDimens.s6))
+            }
+        ) {
+            Text(
+                text = "请粘贴 JSON 数据：",
+                style = MaterialTheme.typography.body1,
+                color = AppTheme.colors.inkSub
+            )
+            Spacer(modifier = Modifier.height(AppDimens.s2))
+            AppDialogTextField(
+                value = importJson,
+                onValueChange = { importJson = it },
+                placeholder = "粘贴 JSON 数据…",
+                minHeight = AppDimens.dialogTextAreaHeight
+            )
+
+            if (importResult != null) {
+                Spacer(modifier = Modifier.height(AppDimens.s4))
+                if (importResult!!.success) {
+                    Text(
+                        text = "导入成功！",
+                        style = MaterialTheme.typography.body1,
+                        color = AppTheme.colors.success
+                    )
+                    Text(
+                        text = "分组: ${importResult!!.groupsImported}, 动作: ${importResult!!.actionsImported}, 打卡: ${importResult!!.checkinsImported}",
+                        style = MaterialTheme.typography.body2,
+                        color = AppTheme.colors.inkSub
+                    )
                 } else {
-                    TextButton(
-                        onClick = {
-                            if (importJson.isNotBlank()) {
-                                isImporting = true
-                                scope.launch {
-                                    importResult = withContext(Dispatchers.Default) {
-                                        repository.importDataFromJson(importJson)
-                                    }
-                                    isImporting = false
-                                    if (importResult?.success == true) {
-                                        loadStats()
-                                    }
-                                }
-                            }
-                        },
-                        enabled = importJson.isNotBlank()
-                    ) {
-                        Text("导入")
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showImportDialog = false
-                    importJson = ""
-                    importResult = null
-                }) {
-                    Text("取消")
+                    Text(
+                        text = "导入失败: ${importResult!!.errorMessage}",
+                        style = MaterialTheme.typography.body1,
+                        color = AppTheme.colors.danger
+                    )
                 }
             }
-        )
+        }
     }
 
     // 时间选择器对话框
@@ -684,40 +643,29 @@ fun SettingsScreen(
 
     // 成功提示
     if (showSuccessMessage) {
-        AlertDialog(
+        AppConfirmDialog(
+            title = "操作成功",
+            message = "数据已清除。",
             onDismissRequest = { showSuccessMessage = false },
-            title = { Text("操作成功") },
-            text = { Text("数据已清除。") },
-            confirmButton = {
-                TextButton(onClick = { showSuccessMessage = false }) {
-                    Text("确定")
-                }
-            }
+            onConfirm = { showSuccessMessage = false },
+            confirmLabel = "知道了",
+            dismissLabel = null
         )
     }
 
     // 退出登录确认对话框
     if (showLogoutDialog) {
-        AlertDialog(
+        AppConfirmDialog(
+            title = "退出登录",
+            message = "退出后本地数据保留，下次登录可恢复同步。",
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("退出登录") },
-            text = { Text("退出后本地数据保留，下次登录可恢复同步。") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showLogoutDialog = false
-                        authService?.logout()
-                        onLogout?.invoke()
-                    }
-                ) {
-                    Text("退出", color = AppTheme.colors.danger)
-                }
+            onConfirm = {
+                showLogoutDialog = false
+                authService?.logout()
+                onLogout?.invoke()
             },
-            dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("取消")
-                }
-            }
+            confirmLabel = "退出",
+            danger = true
         )
     }
 }
@@ -849,67 +797,82 @@ fun TimePickerDialog(
     var selectedHour by remember { mutableStateOf(initialHour) }
     var selectedMinute by remember { mutableStateOf(initialMinute) }
 
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择提醒时间") },
-        text = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 小时选择
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = {
-                        selectedHour = (selectedHour + 1) % 24
-                    }) {
-                        AppIcon(AppIcons.ChevronUp, "增加", tint = AppTheme.colors.brand, size = AppDimens.icon)
-                    }
-                    Text(
-                        text = selectedHour.toString().padStart(2, '0'),
-                        style = MaterialTheme.typography.h3
-                    )
-                    IconButton(onClick = {
-                        selectedHour = if (selectedHour > 0) selectedHour - 1 else 23
-                    }) {
-                        AppIcon(AppIcons.ChevronDown, "减少", tint = AppTheme.colors.brand, size = AppDimens.icon)
-                    }
-                }
-
-                Text(
-                    text = " : ",
-                    style = MaterialTheme.typography.h3,
-                    modifier = Modifier.padding(horizontal = AppDimens.s2)
-                )
-
-                // 分钟选择
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = {
-                        selectedMinute = (selectedMinute + 5) % 60
-                    }) {
-                        AppIcon(AppIcons.ChevronUp, "增加", tint = AppTheme.colors.brand, size = AppDimens.icon)
-                    }
-                    Text(
-                        text = selectedMinute.toString().padStart(2, '0'),
-                        style = MaterialTheme.typography.h3
-                    )
-                    IconButton(onClick = {
-                        selectedMinute = if (selectedMinute >= 5) selectedMinute - 5 else 55
-                    }) {
-                        AppIcon(AppIcons.ChevronDown, "减少", tint = AppTheme.colors.brand, size = AppDimens.icon)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selectedHour, selectedMinute) }) {
-                Text("确定")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
+        title = "选择提醒时间",
+        subtitle = "设置每天的训练提醒时刻",
+        confirmLabel = "确定",
+        onConfirm = { onConfirm(selectedHour, selectedMinute) },
+        dismissLabel = "取消",
+        onDismiss = onDismiss
+    ) {
+        // 顶部留白把标题与上箭头拉开，避免旧版 AlertDialog 的标题/控件重叠
+        Spacer(modifier = Modifier.height(AppDimens.s2))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TimeWheelColumn(
+                value = selectedHour,
+                onIncrease = { selectedHour = (selectedHour + 1) % 24 },
+                onDecrease = { selectedHour = if (selectedHour > 0) selectedHour - 1 else 23 }
+            )
+            Text(
+                text = ":",
+                style = MaterialTheme.typography.h2,
+                fontWeight = AppTypeWeight.emphasis,
+                color = AppTheme.colors.inkMuted,
+                modifier = Modifier.padding(horizontal = AppDimens.s4)
+            )
+            TimeWheelColumn(
+                value = selectedMinute,
+                onIncrease = { selectedMinute = (selectedMinute + 5) % 60 },
+                onDecrease = { selectedMinute = if (selectedMinute >= 5) selectedMinute - 5 else 55 }
+            )
         }
-    )
+        Spacer(modifier = Modifier.height(AppDimens.s2))
+    }
+}
+
+/** 时间选择器的单列：上箭头 / 数字块 / 下箭头 */
+@Composable
+private fun TimeWheelColumn(
+    value: Int,
+    onIncrease: () -> Unit,
+    onDecrease: () -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        IconButton(onClick = onIncrease) {
+            AppIcon(
+                imageVector = AppIcons.ChevronUp,
+                contentDescription = "增加",
+                tint = AppTheme.colors.brand,
+                size = AppDimens.icon
+            )
+        }
+        Surface(
+            shape = AppShapes.button,
+            color = AppTheme.colors.surfaceAlt
+        ) {
+            Text(
+                text = value.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.h2,
+                fontWeight = AppTypeWeight.emphasis,
+                color = AppTheme.colors.ink,
+                modifier = Modifier.padding(
+                    horizontal = AppDimens.s4,
+                    vertical = AppDimens.s2
+                )
+            )
+        }
+        IconButton(onClick = onDecrease) {
+            AppIcon(
+                imageVector = AppIcons.ChevronDown,
+                contentDescription = "减少",
+                tint = AppTheme.colors.brand,
+                size = AppDimens.icon
+            )
+        }
+    }
 }

@@ -1,4 +1,7 @@
 package pages
+import ui.AppConfirmDialog
+import ui.AppDialog
+import ui.AppDialogTextField
 import ui.AppIcon
 import ui.AppIcons
 import ui.theme.*
@@ -237,87 +240,67 @@ fun CheckinScreen() {
 
     // 删除确认对话框
     deletingCheckin?.let { checkin ->
-        AlertDialog(
+        AppConfirmDialog(
+            title = "删除打卡记录",
+            message = "确定要删除这条打卡记录吗？删除后无法恢复。",
             onDismissRequest = { deletingCheckin = null },
-            title = { Text("确认删除") },
-            text = { Text("确定要删除这条打卡记录吗？") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            withContext(Dispatchers.Default) {
-                                repository.deleteCheckin(checkin.id)
-                            }
-                            deletingCheckin = null
-                            loadData()
-                        }
+            onConfirm = {
+                scope.launch {
+                    withContext(Dispatchers.Default) {
+                        repository.deleteCheckin(checkin.id)
                     }
-                ) {
-                    Text("删除", color = AppTheme.colors.danger)
+                    deletingCheckin = null
+                    loadData()
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { deletingCheckin = null }) {
-                    Text("取消")
-                }
-            }
+            confirmLabel = "删除",
+            danger = true
         )
     }
 
     // 删除全部确认对话框
     if (showDeleteAllDialog) {
-        AlertDialog(
+        AppConfirmDialog(
+            title = "删除全部记录",
+            message = "确定要删除所有筛选后的打卡记录吗？此操作无法撤销。",
             onDismissRequest = { showDeleteAllDialog = false },
-            title = { Text("确认删除全部") },
-            text = { Text("确定要删除所有筛选后的打卡记录吗？此操作无法撤销。") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            withContext(Dispatchers.Default) {
-                                filteredCheckins.forEach { repository.deleteCheckin(it.id) }
-                            }
-                            showDeleteAllDialog = false
-                            loadData()
-                        }
+            onConfirm = {
+                scope.launch {
+                    withContext(Dispatchers.Default) {
+                        filteredCheckins.forEach { repository.deleteCheckin(it.id) }
                     }
-                ) {
-                    Text("删除全部", color = AppTheme.colors.danger)
+                    showDeleteAllDialog = false
+                    loadData()
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteAllDialog = false }) {
-                    Text("取消")
-                }
-            }
+            confirmLabel = "删除全部",
+            danger = true
         )
     }
 
-    // 筛选弹窗
+    // 筛选弹窗：标题与按钮由 AppDialog 统一提供，内容只负责表单
     if (showFilterSheet) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { showFilterSheet = false },
-            title = { Text("筛选") },
-            text = {
-                FilterBottomSheet(
-                    groups = groups,
-                    selectedGroupId = selectedGroupId,
-                    searchQuery = searchQuery,
-                    onGroupSelected = { selectedGroupId = it },
-                    onSearchQueryChange = { searchQuery = it },
-                    onClearFilters = {
-                        searchQuery = ""
-                        selectedGroupId = null
-                    },
-                    onDismiss = { showFilterSheet = false }
-                )
+            title = "筛选打卡记录",
+            subtitle = "按关键词或分组查看记录",
+            extraActionLabel = "清除筛选",
+            onExtraAction = {
+                searchQuery = ""
+                selectedGroupId = null
             },
-            confirmButton = {
-                TextButton(onClick = { showFilterSheet = false }) {
-                    Text("确定")
-                }
-            }
-        )
+            dismissLabel = "取消",
+            confirmLabel = "完成",
+            onConfirm = { showFilterSheet = false }
+        ) {
+            FilterDialogContent(
+                groups = groups,
+                selectedGroupId = selectedGroupId,
+                searchQuery = searchQuery,
+                onGroupSelected = { selectedGroupId = it },
+                onSearchQueryChange = { searchQuery = it }
+            )
+        }
     }
 }
 
@@ -579,108 +562,84 @@ fun EditCheckinDialog(
     onDismiss: () -> Unit,
     onSave: (Int, Boolean) -> Unit
 ) {
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
-        title = { Text("编辑打卡记录") },
-        text = {
-            Column {
-                Text(
-                    text = "分组: ${checkin.groupName}",
-                    style = MaterialTheme.typography.body2,
-                    color = AppTheme.colors.inkSub
-                )
-                Spacer(modifier = Modifier.height(AppDimens.s4))
-
-                OutlinedTextField(
-                    value = duration,
-                    onValueChange = onDurationChange,
-                    label = { Text("时长（秒）") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(AppDimens.s4))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("已完成")
-                    Switch(
-                        checked = completed,
-                        onCheckedChange = onCompletedChange,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = AppTheme.colors.onBrand,
-                            checkedTrackColor = AppTheme.colors.brand,
-                            uncheckedThumbColor = AppTheme.colors.surface,
-                            uncheckedTrackColor = AppTheme.colors.surfaceAlt
-                        )
-                    )
-                }
-            }
+        title = "编辑打卡记录",
+        subtitle = "分组：${checkin.groupName}",
+        confirmLabel = "保存",
+        onConfirm = {
+            val durationInt = duration.toIntOrNull() ?: 0
+            onSave(durationInt, completed)
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val durationInt = duration.toIntOrNull() ?: 0
-                    onSave(durationInt, completed)
-                }
-            ) {
-                Text("保存")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
+        dismissLabel = "取消",
+        onDismiss = onDismiss
+    ) {
+        AppDialogTextField(
+            value = duration,
+            onValueChange = onDurationChange,
+            label = "时长（秒）",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(AppDimens.s4))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "已完成",
+                style = MaterialTheme.typography.body1,
+                color = AppTheme.colors.ink
+            )
+            Switch(
+                checked = completed,
+                onCheckedChange = onCompletedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = AppTheme.colors.onBrand,
+                    checkedTrackColor = AppTheme.colors.brand,
+                    uncheckedThumbColor = AppTheme.colors.surface,
+                    uncheckedTrackColor = AppTheme.colors.surfaceAlt
+                )
+            )
         }
-    )
+    }
 }
 
+/**
+ * 筛选弹窗的表单内容。标题、辅助操作与确认按钮统一由 [AppDialog] 提供，
+ * 这里只渲染控件，避免旧版「AlertDialog 标题 + 内容里又一个标题」的重复结构。
+ */
 @Composable
-fun FilterBottomSheet(
+fun FilterDialogContent(
     groups: List<GroupOption>,
     selectedGroupId: Long?,
     searchQuery: String,
     onGroupSelected: (Long?) -> Unit,
-    onSearchQueryChange: (String) -> Unit,
-    onClearFilters: () -> Unit,
-    onDismiss: () -> Unit
+    onSearchQueryChange: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(AppDimens.s4)
-    ) {
-        Text(
-            text = "筛选",
-            style = MaterialTheme.typography.h6,
-            fontWeight = AppTypeWeight.emphasis
-        )
-
-        Spacer(modifier = Modifier.height(AppDimens.s4))
-
-        // 搜索
-        OutlinedTextField(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        AppDialogTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            label = { Text("搜索") },
-            leadingIcon = { AppIcon(AppIcons.Search, "搜索", size = AppDimens.iconSmall) },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            placeholder = "搜索记录",
+            singleLine = true,
+            leadingIcon = {
+                AppIcon(
+                    imageVector = AppIcons.Search,
+                    contentDescription = "搜索",
+                    tint = AppTheme.colors.inkMuted,
+                    size = AppDimens.iconSmall
+                )
+            }
         )
 
-        Spacer(modifier = Modifier.height(AppDimens.s4))
-
-        // 分组筛选
+        Spacer(modifier = Modifier.height(AppDimens.s6))
         Text(
             text = "按分组筛选",
             style = MaterialTheme.typography.subtitle2,
             color = AppTheme.colors.inkSub
         )
-
         Spacer(modifier = Modifier.height(AppDimens.s2))
 
         groups.forEach { group ->
@@ -688,40 +647,25 @@ fun FilterBottomSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onGroupSelected(group.id) }
-                    .padding(vertical = AppDimens.s2),
+                    .padding(vertical = AppDimens.s1),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
                     selected = selectedGroupId == group.id,
-                    onClick = { onGroupSelected(group.id) }
+                    onClick = { onGroupSelected(group.id) },
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = AppTheme.colors.brand,
+                        unselectedColor = AppTheme.colors.inkMuted
+                    )
                 )
                 Spacer(modifier = Modifier.width(AppDimens.s2))
-                Text(group.name)
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.body1,
+                    color = AppTheme.colors.ink
+                )
             }
         }
-
-        Spacer(modifier = Modifier.height(AppDimens.s6))
-
-        // 按钮
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(AppDimens.s4)
-        ) {
-            OutlinedButton(
-                onClick = onClearFilters,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("清除筛选")
-            }
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("确定")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(AppDimens.s8))
     }
 }
 
