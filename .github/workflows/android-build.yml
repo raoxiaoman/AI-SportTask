@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 配置 JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -36,13 +36,34 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: 配置 Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: 安装 SDK 组件
+      # 不用 android-actions/setup-android：它会执行 sdkmanager tools，
+      # 而新版 SDK 仓库已移除该包，直接导致 exit 1。runner 镜像自带 SDK。
+      - name: 定位 Android SDK
+        shell: bash
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f -perm -u+x 2>/dev/null | head -1)
+          fi
+          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+            echo "::error::未找到 sdkmanager，SDK_ROOT=$SDK_ROOT"
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "sdkmanager: $SDKMANAGER"
+
+      - name: 接受许可并安装 SDK 组件
+        shell: bash
+        run: |
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          if ! "$SDKMANAGER" --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /tmp/sdk-install.log 2>&1; then
+            cat /tmp/sdk-install.log
+            exit 1
+          fi
+          "$SDKMANAGER" --list_installed | grep -E "platforms;android-34|build-tools;34" || true
 
       - name: 运行单元测试并打包
         run: ./gradlew :shared:testDebugUnitTest :androidApp:assembleDebug --console=plain --no-daemon
