@@ -73,8 +73,6 @@
 
 > CI 不读取 gitignored 的 `local.properties` / `server_url.txt`，打出的包默认指向 `http://localhost:3456`；
 > 云同步请在登录页「服务器设置」中填写实际地址（本机配置不会进仓库）。
-> Debug 包统一使用 `androidApp/debug.keystore`（仅调试签名，不可用于发布），
-> 因此 CI 包与本地包签名一致，可直接覆盖安装、不会清空本地数据。
 
 ## 快速开始
 
