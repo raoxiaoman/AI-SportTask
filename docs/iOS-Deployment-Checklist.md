@@ -24,7 +24,7 @@
 |------|------|:----:|
 | Bundle Identifier | `com.raohui.sporttask` | ✅ |
 | App Name | `AI SportTask` | ✅ |
-| Deployment Target | iOS 16.0+（KMP + Compose Multiplatform 要求） | ⚠️ 确认 |
+| Deployment Target | iOS 16.0（Xcode 27 最低支持 15.0） | ✅ |
 | Team ID | 你的 Apple Developer Team ID | ⬜ |
 | Supported Orientations | Portrait + Landscape | ✅ |
 
@@ -33,17 +33,41 @@
 ### 2.1 构建共享 Framework
 
 ```bash
-# 在项目根目录执行
-./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon
 ```
 
-如果编译通过，说明 KMP 共享代码在 iOS 端没问题。
+> 加 `--no-daemon`：常驻 Gradle daemon 会继承启动它的 shell 的文件系统限制，表现为写 `.klib` 报
+> `Operation not permitted`（代码本身没错）。
 
-### 2.2 已知的 iOS 平台问题
+产物：`shared/build/bin/iosSimulatorArm64/debugFramework/shared.framework`
+
+### 2.2 命令行构建 App（不开 Xcode 也能编）
+
+```bash
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
+  -configuration Debug -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath /tmp/iosApp-dd \
+  ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+  ENABLE_USER_SCRIPT_SANDBOXING=NO \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+```
+
+| 参数 | 作用 |
+|------|------|
+| `ENABLE_USER_SCRIPT_SANDBOXING=NO` | 否则 Xcode 沙箱化 Run Script，Gradle 无法读写 build 目录 |
+| `ARCHS=arm64` | Apple Silicon 上避免同时编 x86_64 模拟器切片 |
+| `CODE_SIGNING_ALLOWED=NO` | 模拟器不需要签名，避免空 `TEAM_ID` 报错 |
+
+产物在 `-derivedDataPath` 下的 `Build/Products/Debug-iphonesimulator/AI SportTask.app`。
+
+### 2.3 已知的 iOS 平台问题
 
 | 问题 | 状态 |
 |------|:----:|
-| iOS `daysAgoDateString()` 实现 | ✅ 已补完 |
+| `Repository` 中的 `java.time.LocalDate` | ✅ 已改为跨平台 `todayDateString()`（commonMain 不能引 JVM API） |
+| SQLDelight iOS 驱动 | ✅ 已加 `native-driver` 依赖 + Xcode 侧 `-lsqlite3` 链接 |
+| `daysAgoDateString()` 的 `NSCalendarUnitDay` | ✅ 已补导入，`setValue` 传 `Long` |
+| Deployment Target | ✅ 已设 iOS 16.0（Xcode 27 最低支持 15.0） |
 | iOS 训练音频（`TrainingAudio.kt`） | ⬜ 存根，返回空；资源名已与 Android `res/raw/*.mp3` 对齐，接入时按 `TrainingAudioEvent` 用 `NSBundle` + `AVAudioPlayer` 展开 |
 | iOS 震动反馈 | ⬜ 存根，返回空（不影响运行） |
 | 深色模式适配 | ⚠️ Compose Multiplatform 自动适配，需验证 |
