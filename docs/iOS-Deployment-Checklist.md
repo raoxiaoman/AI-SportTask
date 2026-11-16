@@ -68,9 +68,30 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
 | SQLDelight iOS 驱动 | ✅ 已加 `native-driver` 依赖 + Xcode 侧 `-lsqlite3` 链接 |
 | `daysAgoDateString()` 的 `NSCalendarUnitDay` | ✅ 已补导入，`setValue` 传 `Long` |
 | Deployment Target | ✅ 已设 iOS 16.0（Xcode 27 最低支持 15.0） |
-| iOS 训练音频（`TrainingAudio.kt`） | ⬜ 存根，返回空；资源名已与 Android `res/raw/*.mp3` 对齐，接入时按 `TrainingAudioEvent` 用 `NSBundle` + `AVAudioPlayer` 展开 |
-| iOS 震动反馈 | ⬜ 存根，返回空（不影响运行） |
+| iOS 训练音频（`TrainingAudio.kt`） | ✅ `AVAudioPlayer` 预加载 + 主队列延迟调度，与 Android 共用同一份事件映射 |
+| iOS 震动反馈（`TrainingSound.kt`） | ✅ `UIImpactFeedbackGenerator` 三档触感，与 Android 三档时长对齐 |
 | 深色模式适配 | ⚠️ Compose Multiplatform 自动适配，需验证 |
+
+### 2.4 训练音频与触感（iOS 侧实现说明）
+
+音频资源放在 `iosApp/iosApp/Audio/`，在 Xcode 中是一个**文件夹引用**（蓝色目录，`lastKnownFileType = folder`），
+构建时整目录拷进 App bundle，运行期用 `NSBundle.pathForResource(name, "mp3", inDirectory = "Audio")` 取路径。
+新增/替换片段只要改目录内容，**不需要动 pbxproj**。
+
+| 实现点 | 做法 | 原因 |
+|------|------|------|
+| 播放器 | 一个片段一个 `AVAudioPlayer`，进入执行页时全量 `prepareToPlay()` | 与 Android SoundPool 预加载对齐，播放无首帧延迟 |
+| 变调/音量 | `enableRate = true` + `rate` / `volume` | 秒针强调、提示音层次与 Android 完全一致 |
+| 排队 | `dispatch_after` 到主队列，用 generation 令牌做取消 | 对应 Android 的 `Handler.removeCallbacks` |
+| 会话 | `.playback` + `.mixWithOthers` | 静音键打开时仍能播报；不打断用户音乐（等同 Android 不抢音频焦点） |
+| 离开执行页 | `stop()` + `setActive(false, notifyOthersOnDeactivation)` | 让被压低的第三方音乐恢复 |
+| 触感 | `UIImpactFeedbackGenerator`（light/medium/heavy）+ 完成时 `UINotificationFeedbackGenerator` | iOS 无「震动 N 毫秒」API，只能按手感对齐 |
+
+日志：过滤 `SportTaskAudio` 可看到 `session ready` / `ready clips=15/15` / `event=START` / `play clip=v_start` 等行；
+若出现 `clip missing: Audio/xxx.mp3`，说明 bundle 里没有该文件（检查文件夹引用是否被误删）。
+
+> 资源由 `./tools/generate_training_audio.sh` 一次生成两份（Android `res/raw` 与 iOS `Audio/`），
+> 详见 [训练音频素材](训练音频素材.md)。
 
 ## 第三步：模拟器测试
 
@@ -81,6 +102,8 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
    - 训练计时器是否正常
    - 数据持久化是否正常（退出重进）
    - 深色模式切换
+   - 训练音频：开始 / 倒数 5-1 / 过半 / 休息 / 休息结束 / 完成各有语音，秒针全程有声
+   - 触感：真机才能感知（模拟器无 Taptic Engine，不报错也不震）
 
 ## 第四步：TestFlight 发布
 
@@ -130,4 +153,9 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
 已修复（iOS 之前缺了这个 `actual` 实现），拉取最新代码即可。
 
 ### Q: 音效/震动不工作
-iOS 音效和震动接口目前是空实现（stub），不影响应用运行和上架。后续迭代可接入 `AVFoundation` / `AudioToolbox`。
+1. 先在设置页确认「声音 / 语音 / 秒针 / 震动」四个开关都已打开（震动默认关闭）。
+2. 音频日志过滤 `SportTaskAudio`：
+   - 有 `session ready` 但没有 `play clip=` → 事件没派发到音频层，查 `TrainingFeedback` 开关；
+   - 有 `clip missing` → bundle 里缺文件，检查 `iosApp/iosApp/Audio` 是否还在 Copy Bundle Resources 中。
+3. 手机静音键**不会**让训练音效静音（会话是 `.playback`），但系统音量拉到 0 会。
+4. 触感在 iPad 与模拟器上无效，属正常（无 Taptic Engine）。

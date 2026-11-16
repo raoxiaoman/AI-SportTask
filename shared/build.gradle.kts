@@ -63,6 +63,20 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
             }
         }
+        // iOS 专属测试（如 TrainingAudio 的模拟器真跑验证）。
+        // 注意：commonTest 用例带 JUnit 注解，native 侧编不过，故这里不依赖 commonTest
+        val iosX64Test by getting
+        val iosArm64Test by getting
+        val iosSimulatorArm64Test by getting
+        val iosTest by creating {
+            iosX64Test.dependsOn(this)
+            iosArm64Test.dependsOn(this)
+            iosSimulatorArm64Test.dependsOn(this)
+            dependencies {
+                implementation("org.jetbrains.kotlin:kotlin-test:1.9.23")
+            }
+        }
+
         val iosX64Main by getting
         val iosArm64Main by getting
         val iosSimulatorArm64Main by getting

@@ -3,7 +3,7 @@ package shared
 import data.Achievement
 import data.AchievementManager
 import data.ALL_ACHIEVEMENTS
-import org.junit.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue

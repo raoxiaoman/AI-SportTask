@@ -5,7 +5,7 @@ import data.CheckinItem
 import data.GroupItem
 import data.ImportResult
 import data.TrainingResult
-import org.junit.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull

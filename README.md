@@ -40,7 +40,8 @@ cd AI-SportTask
 # Android
 ./gradlew :androidApp:installDebug
 
-# iOS：用 Xcode 打开 iosApp/（尚未完成编译验证）
+# iOS：用 Xcode 打开 iosApp/iosApp.xcodeproj 后运行，
+#      命令行构建参数见 docs/iOS-Deployment-Checklist.md
 ```
 
 云同步为可选能力。服务端随仓库提供（`backend/`，Node.js + Express + SQLite），启动后可在 App 登录页「服务器设置」填写地址；未启动时用离线模式即可。
@@ -69,7 +70,7 @@ git push origin v1.0.3
 - **v1.0.1** — 修复正式包在服务端未部署时无法进入主界面的问题，新增离线使用入口
 - **v1.0.0** — 首个正式版本：动作图解、UI 设计规范落地、自动打包发版
 
-后续计划：自动同步（离线队列补发）、iOS 编译验证、动作模板库。
+后续计划：自动同步（离线队列补发）、iOS 模拟器/真机回归、动作模板库。
 
 ## 许可证
 

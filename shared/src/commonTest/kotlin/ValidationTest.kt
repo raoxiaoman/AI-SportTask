@@ -1,6 +1,8 @@
 package shared
 
-import org.junit.Test
+import data.daysBetweenStrings
+import data.daysBetweenStrings
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -196,7 +198,7 @@ class ValidationTest {
     private fun formatTime(seconds: Int): String {
         val mins = seconds / 60
         val secs = seconds % 60
-        return "%d:%02d".format(mins, secs)
+        return "$mins:${secs.toString().padStart(2, '0')}"
     }
 
     private data class ActionTestData(
@@ -212,10 +214,10 @@ class ValidationTest {
         var currentConsecutive = 1
 
         for (i in 1 until sortedDates.size) {
-            val prev = java.time.LocalDate.parse(sortedDates[i - 1])
-            val curr = java.time.LocalDate.parse(sortedDates[i])
+            val prev = sortedDates[i - 1]
+            val curr = sortedDates[i]
 
-            if (curr == prev.plusDays(1)) {
+            if (daysBetweenStrings(prev, curr) == 1) {
                 currentConsecutive++
                 maxConsecutive = maxOf(maxConsecutive, currentConsecutive)
             } else {

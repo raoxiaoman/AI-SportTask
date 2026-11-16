@@ -1,6 +1,6 @@
 package shared
 
-import org.junit.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -71,7 +71,7 @@ class StatisticsTest {
     // ============ 完成率计算 ============
 
     @Test
-    fun `完成率-全部完成100%`() {
+    fun `完成率-全部完成时为100pct`() {
         val completed = 10L
         val total = 10L
         val rate = if (total > 0) (completed.toFloat() / total) * 100 else 0f

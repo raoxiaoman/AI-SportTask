@@ -3,7 +3,7 @@ package shared
 import cloud.AuthService
 import cloud.SyncManager
 import data.LoginResult
-import org.junit.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue

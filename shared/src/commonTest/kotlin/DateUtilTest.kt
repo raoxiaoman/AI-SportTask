@@ -5,7 +5,7 @@ import data.areConsecutiveDays
 import data.calculateConsecutiveDays
 import data.daysBetweenStrings
 import data.formatTime
-import org.junit.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue

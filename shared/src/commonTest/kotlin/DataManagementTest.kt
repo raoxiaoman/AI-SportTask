@@ -2,7 +2,7 @@ package shared
 
 import data.ImportResult
 import data.formatTime
-import org.junit.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue

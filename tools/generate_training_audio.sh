@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# 生成训练音频资源（Android res/raw）。
+# 生成训练音频资源，一次产出两端副本：
+#   Android → androidApp/src/androidMain/res/raw
+#   iOS     → iosApp/iosApp/Audio（Xcode 以文件夹引用方式整体拷进 App bundle）
 #
 # 音效来源：sfxmint.com，CC0 1.0（可商用、无需署名）
 #   - 木质节拍器滴答 https://sfxmint.com/dl/metronome-ticking-01.mp3
@@ -13,9 +15,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/androidApp/src/androidMain/res/raw"
+IOS_OUT="$ROOT/iosApp/iosApp/Audio"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-mkdir -p "$OUT"
+mkdir -p "$OUT" "$IOS_OUT"
 
 echo "下载 CC0 音效…"
 curl -fLsS --max-time 30 -o "$TMP/metronome.mp3" \
@@ -57,5 +60,11 @@ voice v_half     235 "时间过半"
 voice v_complete 220 "训练完成"
 voice v_skip     235 "跳过"
 
-echo "产物：$OUT"
+# 两端必须完全一致：iOS 侧直接复用 Android 的产物，避免两处资源各自漂移。
+echo "同步到 iOS App bundle…"
+cp "$OUT"/*.mp3 "$IOS_OUT"/
+
+echo "产物："
 ls -lh "$OUT"
+echo "→ $IOS_OUT"
+ls -lh "$IOS_OUT" | tail -n +2 | wc -l | xargs echo "iOS 片段数："
