@@ -2,6 +2,7 @@ package pages
 
 import platform.Foundation.NSDateFormatter
 import platform.Foundation.NSCalendarUnitHour
+import platform.Foundation.NSCalendarUnitDay
 import platform.Foundation.NSDate
 import platform.Foundation.NSCalendar
 import platform.Foundation.NSDateComponents
@@ -15,7 +16,7 @@ actual fun todayDateString(): String {
 actual fun daysAgoDateString(days: Int): String {
     val calendar = NSCalendar.currentCalendar
     val components = NSDateComponents()
-    components.setValue(-days, forComponent = NSCalendarUnitDay)
+    components.setValue((-days).toLong(), forComponent = NSCalendarUnitDay)
     val date = calendar.dateByAddingComponents(components, toDate = NSDate(), options = 0u)
         ?: NSDate()
     val formatter = NSDateFormatter()

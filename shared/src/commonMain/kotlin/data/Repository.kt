@@ -4,6 +4,7 @@ import com.raohui.sporttask.db.SportTaskDatabase
 import db.DatabaseProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import pages.todayDateString
 
 object SportTaskRepository {
     private val db: SportTaskDatabase by lazy { DatabaseProvider.db }
@@ -193,7 +194,7 @@ object SportTaskRepository {
         buildString {
             appendLine("{")
             appendLine("  \"version\": 1,")
-            appendLine("  \"exportedAt\": \"${java.time.LocalDate.now()}\",")
+            appendLine("  \"exportedAt\": \"${todayDateString()}\",")
 
             // Export groups
             appendLine("  \"groups\": [")
@@ -261,7 +262,7 @@ object SportTaskRepository {
                 
                 groupRegex.findAll(groupsContent).forEach { match ->
                     val name = match.groupValues[2]
-                    val createdAt = match.groupValues[3].ifEmpty { java.time.LocalDate.now().toString() }
+                    val createdAt = match.groupValues[3].ifEmpty { todayDateString() }
                     q.insertActionGroup(name, createdAt)
                     groupsImported++
                 }
@@ -290,7 +291,7 @@ object SportTaskRepository {
                     val defaultTime = match.groupValues[5].toLongOrNull() ?: 30
                     val restTime = match.groupValues[6].toLongOrNull() ?: 10
                     val orderIndex = match.groupValues[7].toLongOrNull() ?: 1
-                    val createdAt = match.groupValues[8].ifEmpty { java.time.LocalDate.now().toString() }
+                    val createdAt = match.groupValues[8].ifEmpty { todayDateString() }
                     
                     q.insertAction(newGroupId, name, stepsText, defaultTime, restTime, orderIndex, createdAt)
                     actionsImported++

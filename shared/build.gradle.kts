@@ -72,6 +72,7 @@ kotlin {
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)
             dependencies {
+                implementation("app.cash.sqldelight:native-driver:2.0.2")
                 implementation("io.ktor:ktor-client-darwin:2.3.12")
             }
         }
