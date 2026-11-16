@@ -1,0 +1,37 @@
+[Unit]
+Description=AI SportTask 同步服务 (Node + SQLite)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sporttask
+Group=sporttask
+WorkingDirectory=/opt/sporttask/backend
+
+# 密钥与运行参数放在这里，权限 600，只有 root 可读
+EnvironmentFile=/etc/sporttask/backend.env
+
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+
+# 加固：只允许写数据目录，其余文件系统只读
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/var/lib/sporttask
+StateDirectory=sporttask
+StateDirectoryMode=0750
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sporttask
+
+[Install]
+WantedBy=multi-user.target

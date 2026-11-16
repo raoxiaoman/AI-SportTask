@@ -9,7 +9,7 @@
 > · [下载 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.2/AI-SportTask-v1.0.2-release.apk)
 > · [全部 Release](https://github.com/raoxiaoman/AI-SportTask/releases)
 >
-> 云同步服务端尚未部署，首次启动可在登录页选择「先不登录 · 离线使用」，本地功能不受影响。
+> 云同步服务端可自托管（`backend/`，已提供 systemd + Caddy 部署手册）；未配置服务器时，登录页可选「先不登录 · 离线使用」，本地功能不受影响。
 
 ## 功能
 
@@ -44,7 +44,7 @@ cd AI-SportTask
 #      命令行构建参数见 docs/iOS-Deployment-Checklist.md
 ```
 
-云同步为可选能力。服务端随仓库提供（`backend/`，Node.js + Express + SQLite），启动后可在 App 登录页「服务器设置」填写地址；未启动时用离线模式即可。
+云同步为可选能力。服务端随仓库提供（`backend/`，Node.js + Express + SQLite），部署步骤见 [backend/DEPLOY.md](backend/DEPLOY.md)；App 登录页「服务器设置」填写对外地址即可，未部署时用离线模式。
 
 ## 构建与发布
 

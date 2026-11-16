@@ -2,12 +2,16 @@
  * 数据库层 — SQLite 存储
  */
 const Database = require('better-sqlite3');
+const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'sporttask.db');
+// 生产环境由 systemd 传 DB_PATH（如 /var/lib/sporttask/sporttask.db），
+// 本地开发默认落在 backend 目录下，行为与旧版一致
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'sporttask.db');
 let db;
 
 function init() {
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
@@ -240,5 +244,7 @@ module.exports = {
   createUser, getUserByEmail, getUser,
   getGroups, getActions, getCheckins,
   upsertGroups, upsertActions, upsertCheckins,
-  getSyncState, updateSyncState
+  getSyncState, updateSyncState,
+  /** 供优雅退出调用，确保 WAL 落盘 */
+  close: () => db && db.close()
 };
