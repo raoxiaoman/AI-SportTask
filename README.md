@@ -1,12 +1,12 @@
 # AI SportTask 🏋️
 
 [![Android 自动打包](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml/badge.svg)](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml)
-[![Release v1.0.2](https://img.shields.io/badge/Release-v1.0.2-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.2)
+[![Release v1.0.3](https://img.shields.io/badge/Release-v1.0.3-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.3)
 
 个人运动任务管理与打卡应用，基于 Kotlin Multiplatform + Compose Multiplatform，支持 Android 与 iOS，可选自托管云同步。
 
-> **最新版本 [v1.0.2](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.2)**（2026-11-12）
-> · [下载 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.2/AI-SportTask-v1.0.2-release.apk)
+> **最新版本 [v1.0.3](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.3)**（2026-11-17）
+> · [下载 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.3/AI-SportTask-v1.0.3-release.apk)
 > · [全部 Release](https://github.com/raoxiaoman/AI-SportTask/releases)
 >
 > 云同步服务端可自托管（`backend/`，已提供 systemd + Caddy 部署手册）；未配置服务器时，登录页可选「先不登录 · 离线使用」，本地功能不受影响。
@@ -26,7 +26,7 @@
 到 [Releases](https://github.com/raoxiaoman/AI-SportTask/releases) 下载最新的 `AI-SportTask-vX.Y.Z-release.apk`：
 
 ```bash
-adb install -r AI-SportTask-v1.0.2-release.apk
+adb install -r AI-SportTask-v1.0.3-release.apk
 ```
 
 > 若之前装的是自行编译的 Debug 包，需先卸载再装（签名不同）；正式版本之间可直接覆盖升级。
@@ -66,6 +66,7 @@ git push origin v1.0.3
 
 ## 版本记录
 
+- **v1.0.3** — 补齐 iOS 训练音频、触感反馈与启动崩溃修复；修复云同步“只拉不推”和重启后服务器地址丢失；服务端支持 systemd + Caddy 自托管部署
 - **v1.0.2** — 计时音频重制（内置离线音频，不再依赖系统 TTS）、补齐休息与切换播报、新增过半提醒与最后 3 秒强调、修复准备页底部按钮显示不全
 - **v1.0.1** — 修复正式包在服务端未部署时无法进入主界面的问题，新增离线使用入口
 - **v1.0.0** — 首个正式版本：动作图解、UI 设计规范落地、自动打包发版
