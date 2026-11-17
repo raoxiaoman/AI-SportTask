@@ -72,33 +72,45 @@ data class SyncFullResponse(
     val serverTimestamp: String = ""
 )
 
+/**
+ * 云端分组。字段与 backend/db.js 的 cloud_groups 表一一对应：
+ * id 是云端主键（由客户端按本地 id 稳定生成），local_id 保存本地自增 id 以便回溯。
+ */
 @Serializable
 data class SyncGroup(
     val id: String? = null,
-    @SerialName("local_id") val localId: String? = null,
+    @SerialName("local_id") val localId: Long? = null,
     val name: String = "",
-    val color: String? = null,
-    @SerialName("sort_order") val sortOrder: Int = 0,
+    @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable
 data class SyncAction(
     val id: String? = null,
-    @SerialName("group_id") val groupId: String = "",
+    @SerialName("local_id") val localId: Long? = null,
+    /** 所属分组的**云端 id**，不是本地 id */
+    @SerialName("group_id") val groupId: String? = null,
     val name: String = "",
-    val unit: String = "次",
-    @SerialName("sort_order") val sortOrder: Int = 0,
-    val target: Int = 0,
+    @SerialName("steps_text") val stepsText: String = "",
+    @SerialName("default_time") val defaultTime: Int = 30,
+    @SerialName("rest_time") val restTime: Int = 10,
+    @SerialName("order_index") val orderIndex: Int = 1,
+    @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable
 data class SyncCheckin(
     val id: String? = null,
-    @SerialName("action_id") val actionId: String = "",
-    val count: Int = 0,
+    @SerialName("local_id") val localId: Long? = null,
     val date: String = "",
+    /** 云端 id（分组/动作） */
+    @SerialName("group_id") val groupId: String? = null,
+    @SerialName("action_id") val actionId: String? = null,
+    val duration: Int = 0,
+    @SerialName("is_completed") val isCompleted: Int = 1,
+    @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
 )
 

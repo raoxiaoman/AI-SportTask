@@ -18,6 +18,7 @@ import data.Achievement
 import data.AchievementManager
 import data.SportTaskRepository
 import data.remote.AuthService
+import data.remote.ServerConfig
 import data.remote.OfflineMode
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,8 +46,16 @@ fun App() {
         val authService = remember { AuthService() }
         // 首屏同步判定：已登录，或此前选择过「离线使用」，都直接进入主界面。
         // 离线标记只影响登录拦截，不伪造登录态，设置页仍显示「未登录」。
+        // 注意：必须先恢复服务器地址。restoreFromStorage 原先只在登录页调用，
+        // 已登录用户重启后直接进主界面、登录页的恢复代码永远不执行，
+        // 导致同步一直打默认的 localhost:3456。
         var showMainApp by remember {
-            mutableStateOf(authService.restoreSession() || OfflineMode.isEnabled())
+            mutableStateOf(
+                run {
+                    ServerConfig.restoreFromStorage()
+                    authService.restoreSession() || OfflineMode.isEnabled()
+                }
+            )
         }
 
         if (!showMainApp) {

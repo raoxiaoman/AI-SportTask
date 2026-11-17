@@ -24,9 +24,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
-import data.remote.ApiClient
 import data.remote.AuthService
 import data.remote.ServerConfig
+import data.remote.SyncService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,6 +46,7 @@ fun SettingsScreen(
     var isSyncing by remember { mutableStateOf(false) }
     var syncError by remember { mutableStateOf<String?>(null) }
     var syncSuccess by remember { mutableStateOf(false) }
+    var syncMessage by remember { mutableStateOf("") }
 
     var showAboutDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
@@ -301,35 +302,28 @@ fun SettingsScreen(
                                 icon = if (isSyncing) AppIcons.Sync else AppIcons.Upload,
                                 title = if (isSyncing) "同步中..." else "手动同步",
                                 subtitle = when {
-                                    isSyncing -> "正在上传下载数据"
-                                    syncSuccess -> "上次同步成功"
+                                    isSyncing -> "正在上传本地数据到云端"
+                                    syncSuccess -> syncMessage.ifEmpty { "上次同步成功" }
                                     syncError != null -> "$syncError"
-                                    else -> "点击立即同步数据到云端"
+                                    else -> "把本地分组、动作、打卡记录上传到云端"
                                 },
                                 onClick = {
                                     if (!isSyncing) {
+                                        val auth = authService ?: return@SettingsRow
                                         isSyncing = true
                                         syncError = null
                                         syncSuccess = false
                                         scope.launch {
-                                            try {
-                                                val client = ApiClient()
-                                                // 尝试拉取增量同步测试连接
-                                                val result = client.pull(authService.token)
-                                                result.fold(
-                                                    onSuccess = {
-                                                        syncSuccess = true
-                                                        syncError = null
-                                                    },
-                                                    onFailure = { e ->
-                                                        syncError = e.message ?: "同步失败"
-                                                    }
-                                                )
-                                            } catch (e: Exception) {
-                                                syncError = e.message ?: "连接失败"
-                                            } finally {
-                                                isSyncing = false
-                                            }
+                                            SyncService(auth).sync().fold(
+                                                onSuccess = { result ->
+                                                    syncSuccess = true
+                                                    syncMessage = "已上传 ${result.total} 条 · 分组 ${result.groupsUploaded} / 动作 ${result.actionsUploaded} / 打卡 ${result.checkinsUploaded}"
+                                                },
+                                                onFailure = { e ->
+                                                    syncError = e.message ?: "同步失败"
+                                                }
+                                            )
+                                            isSyncing = false
                                         }
                                     }
                                 }
