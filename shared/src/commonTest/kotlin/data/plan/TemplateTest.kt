@@ -10,12 +10,13 @@ class TemplateTest {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     @Test
-    fun builtInTemplates_haveTwoDistinctIds() {
+    fun builtInTemplates_haveThreeDistinctIds() {
         val templates = builtInTemplates()
-        assertEquals(2, templates.size)
-        assertEquals(2, templates.map { it.id }.toSet().size)
+        assertEquals(3, templates.size)
+        assertEquals(3, templates.map { it.id }.toSet().size)
         assertTrue(templates.any { it.id == "rehab-8w" })
         assertTrue(templates.any { it.id == "office-8w" })
+        assertTrue(templates.any { it.id == "joint-office" })
     }
 
     @Test
@@ -35,6 +36,18 @@ class TemplateTest {
         assertEquals(56, template.totalDays)
         assertEquals("办公室 · 阶段1 唤醒", template.groupName(template.phases.first()))
         assertTrue(template.phases[2].everyOtherDay)
+    }
+
+    @Test
+    fun jointTemplate_hasThreePhasesAnd18Actions() {
+        val template = jointTemplate()
+        assertEquals(3, template.phases.size)
+        assertEquals(18, template.actionCount)
+        assertEquals(63, template.totalDays)
+        assertEquals("关节 · 脚踝段", template.groupName(template.phases.first()))
+        assertEquals(listOf("脚踝段", "膝盖段", "髋关节段"), template.phases.map { it.title })
+        assertTrue(template.phases.all { !it.everyOtherDay })
+        assertTrue(template.phases.all { it.exercises.size == 6 })
     }
 
     @Test

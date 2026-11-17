@@ -112,6 +112,56 @@
           ]
         }
       ]
+    },
+    {
+      "id": "joint-office",
+      "name": "久坐三关节恢复",
+      "description": "脚踝、膝盖、髋关节各成一段，坐姿站姿即可完成。扶桌椅、无跳跃，工位旁就能做。",
+      "groupPrefix": "关节",
+      "phases": [
+        {
+          "index": 1,
+          "title": "脚踝段",
+          "days": 21,
+          "everyOtherDay": false,
+          "exercises": [
+            { "name": "坐姿踝泵", "detail": "坐稳勾脚停 1 秒、绷脚停 1 秒，30 次。消肿第一优先，久坐每小时都做", "seconds": 60, "restSeconds": 10 },
+            { "name": "空中画字母", "detail": "一脚悬空写 A-Z 或画 8 字，幅度到无痛极限，脚踝全范围活动", "seconds": 45, "restSeconds": 10 },
+            { "name": "踝四方向等长", "detail": "手或桌腿给阻力，背屈跖屈内翻外翻各 10 秒 × 2，三成力、关节不动", "seconds": 90, "restSeconds": 15 },
+            { "name": "踝外翻自我抗阻", "detail": "双脚并拢互顶，患脚向外顶 10 秒 × 4，腓骨肌别偷懒", "seconds": 45, "restSeconds": 10 },
+            { "name": "坐姿提踵", "detail": "坐椅前 1/2，双脚慢起 2 秒停 1 秒慢落，15 次，感受小腿泵血", "seconds": 60, "restSeconds": 10 },
+            { "name": "扶桌单腿站", "detail": "手指轻搭桌沿，单腿 20-30 秒换侧，踝不晃；恢复期改双脚站", "seconds": 60, "restSeconds": 15 }
+          ]
+        },
+        {
+          "index": 2,
+          "title": "膝盖段",
+          "days": 21,
+          "everyOtherDay": false,
+          "exercises": [
+            { "name": "坐姿伸膝", "detail": "坐稳缓慢伸直小腿停 2 秒再落，10 次/侧，膝盖对准脚尖，不弹震", "seconds": 60, "restSeconds": 10 },
+            { "name": "坐姿髌骨松动", "detail": "拇指轻推膝盖骨上下左右各 10 次，无痛范围，改善髌骨活动度", "seconds": 45, "restSeconds": 10 },
+            { "name": "扶桌坐站转换", "detail": "不借手从椅上站起再缓慢坐下，10 次，膝对脚尖不内扣", "seconds": 60, "restSeconds": 15 },
+            { "name": "靠墙静蹲", "detail": "背贴墙下滑膝屈不超过 60°，膝不过脚尖，30 秒；前侧痛就蹲浅", "seconds": 60, "restSeconds": 20 },
+            { "name": "坐姿股四头肌收紧", "detail": "腿伸直收紧大腿前侧，膝盖下压停 5 秒放松，10 次/侧", "seconds": 60, "restSeconds": 10 },
+            { "name": "坐位腿后侧拉伸", "detail": "腿伸直脚尖回勾，从髋部往前倾，每侧 30 秒，背不弓", "seconds": 60, "restSeconds": 10 }
+          ]
+        },
+        {
+          "index": 3,
+          "title": "髋关节段",
+          "days": 21,
+          "everyOtherDay": false,
+          "exercises": [
+            { "name": "坐姿髋外展", "detail": "坐椅上双膝用力分开，手向内抵挡对抗 5 秒，10 次，臀侧发力", "seconds": 60, "restSeconds": 10 },
+            { "name": "坐姿夹臀", "detail": "坐椅前 1/2，夹臀 5 秒松 2 秒，10 次，腰不动", "seconds": 60, "restSeconds": 10 },
+            { "name": "坐姿二郎腿拉伸", "detail": "一脚踝搭对侧膝，双手抱大腿轻拉向胸，每侧 30 秒，不驼背", "seconds": 60, "restSeconds": 10 },
+            { "name": "弓步髋屈肌拉伸", "detail": "前后脚弓步，先收臀送髋再微屈前膝，每侧 30 秒，不塌腰", "seconds": 60, "restSeconds": 10 },
+            { "name": "站姿髋铰链", "detail": "扶桌臀向后推、背挺直，腘绳肌发紧停 1 秒，12 次，不弯腰", "seconds": 60, "restSeconds": 10 },
+            { "name": "扶桌侧向抬腿", "detail": "扶桌腿向外侧抬 30°停 1 秒，每侧 12 次，脚尖朝前不外旋", "seconds": 60, "restSeconds": 10 }
+          ]
+        }
+      ]
     }
   ]
 }
