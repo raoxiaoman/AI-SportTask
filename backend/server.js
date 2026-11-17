@@ -18,6 +18,8 @@
  */
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const db = require('./db');
 const auth = require('./auth');
 const sync = require('./sync');
@@ -78,6 +80,26 @@ setInterval(() => {
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0', time: new Date().toISOString() });
+});
+
+// 训练方案模板库（公开只读）：客户端内置同名模板作离线兜底，这里只是分发/更新渠道。
+// 启动时读一次即可，数据是随代码部署的静态文件；systemd 下代码目录只读，不能运行时写入。
+const TEMPLATE_FILE = path.join(__dirname, 'data', 'templates.json');
+let templatePayload = { version: 1, templates: [] };
+try {
+  const parsed = JSON.parse(fs.readFileSync(TEMPLATE_FILE, 'utf8'));
+  if (Array.isArray(parsed.templates)) {
+    templatePayload = { version: Number(parsed.version) || 1, templates: parsed.templates };
+    console.log(`[templates] loaded ${templatePayload.templates.length} templates (v${templatePayload.version})`);
+  } else {
+    console.warn(`[warn] ${TEMPLATE_FILE} 缺少 templates 数组，模板库将返回空列表`);
+  }
+} catch (e) {
+  console.warn(`[warn] 读取模板文件失败：${e.message}`);
+}
+
+app.get('/api/templates', (req, res) => {
+  res.json(templatePayload);
 });
 
 // 注册

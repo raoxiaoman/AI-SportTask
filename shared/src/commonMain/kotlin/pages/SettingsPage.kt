@@ -61,6 +61,7 @@ fun SettingsScreen(
     var showSuccessMessage by remember { mutableStateOf(false) }
     var importResult by remember { mutableStateOf<data.ImportResult?>(null) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showTemplateLibrary by remember { mutableStateOf(false) }
 
     var totalGroups by remember { mutableStateOf(0) }
     var totalActions by remember { mutableStateOf(0) }
@@ -238,6 +239,12 @@ fun SettingsScreen(
             item {
                 LiteCard(modifier = Modifier.padding(horizontal = AppDimens.screenPadding)) {
                     Column(modifier = Modifier.padding(horizontal = AppDimens.s3, vertical = AppDimens.s1)) {
+                        SettingsRow(
+                            icon = AppIcons.Package,
+                            title = "方案模板库",
+                            subtitle = "从内置或服务端方案中选择，一键导入为分组",
+                            onClick = { showTemplateLibrary = true }
+                        )
                         SettingsRow(
                             icon = AppIcons.Calendar,
                             title = "当前计划",
@@ -657,6 +664,14 @@ fun SettingsScreen(
             onConfirm = { showSuccessMessage = false },
             confirmLabel = "知道了",
             dismissLabel = null
+        )
+    }
+
+    // 方案模板库
+    if (showTemplateLibrary) {
+        TemplateLibraryDialog(
+            onDismiss = { showTemplateLibrary = false },
+            onImported = { loadStats() }
         )
     }
 

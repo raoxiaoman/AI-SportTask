@@ -2,6 +2,7 @@ package data.remote
 
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -10,6 +11,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import data.plan.TemplateListResponse
 
 // ========== 请求/响应模型 ==========
 
@@ -120,6 +122,8 @@ data class HealthResponse(
     val version: String = ""
 )
 
+/** 模板 DTO 定义在 data.plan.TrainingTemplate，网络层直接复用，避免两套结构漂移 */
+
 @Serializable
 data class ErrorResponse(
     val error: String? = null,
@@ -140,6 +144,12 @@ class ApiClient {
         install(ContentNegotiation) {
             json(json)
         }
+        // 未配置服务器或离线时快速失败，让模板库能立即回退内置数据
+        install(HttpTimeout) {
+            connectTimeoutMillis = 2_000
+            requestTimeoutMillis = 5_000
+            socketTimeoutMillis = 5_000
+        }
     }
 
     private fun url(path: String): String = "${ServerConfig.baseUrl}$path"
@@ -148,6 +158,15 @@ class ApiClient {
 
     suspend fun health(): Result<HealthResponse> = runCatching {
         client.get(url("/api/health")).body<HealthResponse>()
+    }
+
+    /** 公开接口，无需登录；离线时调用方回退到内置模板 */
+    suspend fun templates(): Result<TemplateListResponse> = runCatching {
+        val response = client.get(url("/api/templates"))
+        if (response.status.value !in 200..299) {
+            throw Exception("获取模板列表失败 (${response.status})")
+        }
+        response.body<TemplateListResponse>()
     }
 
     suspend fun signup(email: String, password: String): Result<AuthResponse> = runCatching {
