@@ -1,12 +1,12 @@
 # AI SportTask 🏋️
 
 [![Android 自动打包](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml/badge.svg)](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml)
-[![Release v1.0.3](https://img.shields.io/badge/Release-v1.0.3-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.3)
+[![Release v1.0.4](https://img.shields.io/badge/Release-v1.0.4-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.4)
 
 个人运动任务管理与打卡应用，基于 Kotlin Multiplatform + Compose Multiplatform，支持 Android 与 iOS，可选自托管云同步。
 
-> **最新版本 [v1.0.3](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.3)**（2026-11-17）
-> · [下载 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.3/AI-SportTask-v1.0.3-release.apk)
+> **最新版本 [v1.0.4](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.4)**（2026-11-17）
+> · [下载 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.4/AI-SportTask-v1.0.4-release.apk)
 > · [全部 Release](https://github.com/raoxiaoman/AI-SportTask/releases)
 >
 > 云同步服务端可自托管（`backend/`，已提供 systemd + Caddy 部署手册）；未配置服务器时，登录页可选「先不登录 · 离线使用」，本地功能不受影响。
@@ -27,7 +27,7 @@
 到 [Releases](https://github.com/raoxiaoman/AI-SportTask/releases) 下载最新的 `AI-SportTask-vX.Y.Z-release.apk`：
 
 ```bash
-adb install -r AI-SportTask-v1.0.3-release.apk
+adb install -r AI-SportTask-v1.0.4-release.apk
 ```
 
 > 若之前装的是自行编译的 Debug 包，需先卸载再装（签名不同）；正式版本之间可直接覆盖升级。
@@ -45,7 +45,7 @@ cd AI-SportTask
 #      命令行构建参数见 docs/iOS-Deployment-Checklist.md
 ```
 
-云同步为可选能力。服务端随仓库提供（`backend/`，Node.js + Express + SQLite），部署步骤见 [backend/DEPLOY.md](backend/DEPLOY.md)；App 登录页「服务器设置」填写对外地址即可，未部署时用离线模式。
+云同步为可选能力。服务端随仓库提供（`backend/`，Node.js + Express + SQLite），部署步骤见 [backend/DEPLOY.md](backend/DEPLOY.md)；App 登录页「服务器设置」填写对外地址即可，未部署时用离线模式。方案模板库通过服务端 `GET /api/templates` 分发，客户端自带同名模板作为离线兜底。
 
 ## 构建与发布
 
@@ -53,8 +53,8 @@ cd AI-SportTask
 - 推送 `v*` 标签：自动产出**签名 Release APK** 并创建 GitHub Release
 
 ```bash
-git tag -a v1.0.3 -m "AI SportTask v1.0.3"
-git push origin v1.0.3
+git tag -a v1.0.4 -m "AI SportTask v1.0.4"
+git push origin v1.0.4
 ```
 
 版本号由标签决定，安装包文件名、Release 标题与 App 内「关于」保持一致。Release 签名密钥保存在仓库 Secrets 中，不进入代码库。
@@ -67,12 +67,13 @@ git push origin v1.0.3
 
 ## 版本记录
 
+- **v1.0.4** — 新增方案模板库：康复与办公室两套方案支持服务端分发与离线内置，一键导入为分组（重名自动加后缀）
 - **v1.0.3** — 补齐 iOS 训练音频、触感反馈与启动崩溃修复；修复云同步“只拉不推”和重启后服务器地址丢失；服务端支持 systemd + Caddy 自托管部署
 - **v1.0.2** — 计时音频重制（内置离线音频，不再依赖系统 TTS）、补齐休息与切换播报、新增过半提醒与最后 3 秒强调、修复准备页底部按钮显示不全
 - **v1.0.1** — 修复正式包在服务端未部署时无法进入主界面的问题，新增离线使用入口
 - **v1.0.0** — 首个正式版本：动作图解、UI 设计规范落地、自动打包发版
 
-后续计划：自动同步（离线队列补发）、iOS 模拟器/真机回归、动作模板库。
+后续计划：自动同步（离线队列补发）、iOS 真机回归、云端模板热更新。
 
 ## 许可证
 
