@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ui.AppConfirmDialog
 import ui.AppDialog
+import ui.AppToast
 import ui.theme.*
 
 /**
@@ -154,7 +155,12 @@ fun TemplateLibraryDialog(
                     result = imported
                     importingId = null
                     confirmTemplate = null
-                    if (imported.success) onImported()
+                    if (imported.success) {
+                        // 关闭确认框后弹全局提示，避免内联文本容易被忽略
+                        onDismiss()
+                        AppToast.show("已导入「${template.name}」：${imported.groupsImported} 个分组、${imported.actionsImported} 个动作")
+                        onImported()
+                    }
                 }
             }
         )

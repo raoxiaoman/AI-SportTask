@@ -5,8 +5,12 @@ import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
+import androidx.compose.material.Snackbar
+import androidx.compose.material.SnackbarHost
+import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +30,7 @@ import pages.*
 import ui.AchievementDialog
 import ui.AppIcon
 import ui.AppIcons
+import ui.AppToast
 import ui.SystemBarAppearanceEffect
 import ui.theme.*
 
@@ -110,6 +115,14 @@ fun MainAppScreen(
     var immersive by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val repository = remember { SportTaskRepository }
+    // 全局 Snackbar：挂载到 Scaffold，供各页面通过 AppToast 调用
+    val snackbarHostState = remember { SnackbarHostState() }
+    DisposableEffect(Unit) {
+        AppToast.attach(snackbarHostState)
+        onDispose { AppToast.detach() }
+    }
+    // 当前方案版本号：切换方案后 +1，作为 key 让首页等页面强制重组刷新
+    var schemeVersion by remember { mutableStateOf(0) }
 
     val navItems = listOf(
         NavItem("训练", AppIcons.Training),
@@ -121,6 +134,18 @@ fun MainAppScreen(
 
     Scaffold(
         backgroundColor = AppTheme.colors.background,
+        snackbarHost = {
+            // 必须复用 AppToast.attach 的同一个 state，否则提示发到无人监听的实例上不显示
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    shape = AppShapes.card,
+                    backgroundColor = AppTheme.colors.ink,
+                    contentColor = AppTheme.colors.surface,
+                    actionColor = AppTheme.colors.brand
+                )
+            }
+        },
         bottomBar = {
             if (!immersive) {
                 BottomNavigation(
@@ -169,18 +194,20 @@ fun MainAppScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedIndex) {
-                0 -> TrainingScreen(
-                    onTrainingComplete = {
-                        scope.launch {
-                            val achs = AchievementManager.checkNewAchievements(repository)
-                            if (achs.isNotEmpty()) {
-                                newAchievements = achs
-                                showAchievements = true
+                0 -> androidx.compose.runtime.key(schemeVersion) {
+                    TrainingScreen(
+                        onTrainingComplete = {
+                            scope.launch {
+                                val achs = AchievementManager.checkNewAchievements(repository)
+                                if (achs.isNotEmpty()) {
+                                    newAchievements = achs
+                                    showAchievements = true
+                                }
                             }
-                        }
-                    },
-                    onImmersiveChange = { immersive = it }
-                )
+                        },
+                        onImmersiveChange = { immersive = it }
+                    )
+                }
                 1 -> GroupScreen()
                 2 -> CheckinScreen()
                 3 -> StatisticsScreen()
@@ -188,7 +215,8 @@ fun MainAppScreen(
                     onThemeChange = onThemeChange,
                     authService = authService,
                     onLogout = onLogout,
-                    onRequestLogin = onRequestLogin
+                    onRequestLogin = onRequestLogin,
+                    onSchemeChanged = { schemeVersion++ }
                 )
                 else -> TrainingScreen(onImmersiveChange = { immersive = it })
             }

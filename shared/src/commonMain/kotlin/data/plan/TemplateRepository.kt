@@ -40,6 +40,7 @@ object TemplateRepository {
         val usedNames = SportTaskRepository.getGroups().map { it.name }.toMutableSet()
         var groupsImported = 0
         var actionsImported = 0
+        val newGroupIds = mutableListOf<Long>()
 
         for (phase in template.phases) {
             val baseName = template.groupName(phase)
@@ -68,13 +69,25 @@ object TemplateRepository {
                 actionsImported++
             }
             groupsImported++
+            newGroupIds.add(groupId)
         }
+
+        // 登记为方案并设为当前，首页会随之切到刚导入的方案
+        val scheme = SchemeRepository.register(
+            templateName = template.name,
+            groupPrefix = template.groupPrefix,
+            startDate = startDate,
+            groupIds = newGroupIds,
+            source = template.id
+        )
 
         ImportResult(
             success = true,
             groupsImported = groupsImported,
             actionsImported = actionsImported,
-            checkinsImported = 0
+            checkinsImported = 0,
+            groupIds = newGroupIds,
+            schemeId = scheme.id
         )
     }.getOrElse { error ->
         ImportResult(

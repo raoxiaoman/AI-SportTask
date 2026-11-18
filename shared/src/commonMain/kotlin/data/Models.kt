@@ -48,7 +48,11 @@ data class ImportResult(
     val groupsImported: Int,
     val actionsImported: Int,
     val checkinsImported: Int,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** 本次导入新建的分组 id（阶段顺序），用于切换到刚导入的方案 */
+    val groupIds: List<Long> = emptyList(),
+    /** 本次导入登记的方案 id */
+    val schemeId: String? = null
 )
 
 /**

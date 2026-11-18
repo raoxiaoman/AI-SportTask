@@ -37,7 +37,8 @@ fun SettingsScreen(
     onThemeChange: ((Boolean) -> Unit)? = null,
     authService: AuthService? = null,
     onLogout: (() -> Unit)? = null,
-    onRequestLogin: (() -> Unit)? = null
+    onRequestLogin: (() -> Unit)? = null,
+    onSchemeChanged: (() -> Unit)? = null
 ) {
     val repository = SportTaskRepository
     val scope = rememberCoroutineScope()
@@ -62,6 +63,17 @@ fun SettingsScreen(
     var importResult by remember { mutableStateOf<data.ImportResult?>(null) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showTemplateLibrary by remember { mutableStateOf(false) }
+    var showSchemePicker by remember { mutableStateOf(false) }
+    var currentSchemeName by remember { mutableStateOf("全部分组") }
+    var currentSchemeId by remember { mutableStateOf<String?>(null) }
+
+    fun loadCurrentScheme() {
+        runCatching {
+            val state = data.plan.SchemeRepository.load()
+            currentSchemeId = state.currentId
+            currentSchemeName = state.schemes.firstOrNull { it.id == state.currentId }?.name ?: "全部分组"
+        }
+    }
 
     var totalGroups by remember { mutableStateOf(0) }
     var totalActions by remember { mutableStateOf(0) }
@@ -116,6 +128,7 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         loadStats()
         loadPlanSummary()
+        loadCurrentScheme()
         // 提醒开关与时间以平台侧（AlarmManager）为准，避免 UI 状态与真实闹钟不一致
         val config = data.plan.ReminderController.current()
         reminderEnabled = config.enabled
@@ -246,6 +259,12 @@ fun SettingsScreen(
                             onClick = { showTemplateLibrary = true }
                         )
                         SettingsRow(
+                            icon = AppIcons.Training,
+                            title = "当前方案",
+                            subtitle = "首页展示：$currentSchemeName · 点击切换",
+                            onClick = { showSchemePicker = true }
+                        )
+                        SettingsRow(
                             icon = AppIcons.Calendar,
                             title = "当前计划",
                             subtitle = planSummary,
@@ -261,7 +280,9 @@ fun SettingsScreen(
                                 scope.launch {
                                     runCatching { data.plan.PlanRepository.importRehabPlan() }
                                         .onSuccess {
-                                            loadStats(); loadPlanSummary()
+                                            loadStats(); loadPlanSummary(); loadCurrentScheme()
+                                            onSchemeChanged?.invoke()
+                                            scope.launch { ui.AppToast.show("已导入 8 周康复计划，并切换为当前方案") }
                                             // 导入计划时自动开启每日提醒（默认 21:00）
                                             if (!reminderEnabled) {
                                                 reminderEnabled = true
@@ -284,6 +305,8 @@ fun SettingsScreen(
                                     runCatching { data.plan.PlanRepository.deletePlan() }
                                     loadStats()
                                     loadPlanSummary()
+                                    loadCurrentScheme()
+                                    onSchemeChanged?.invoke()
                                     isPlanBusy = false
                                 }
                             },
@@ -671,7 +694,23 @@ fun SettingsScreen(
     if (showTemplateLibrary) {
         TemplateLibraryDialog(
             onDismiss = { showTemplateLibrary = false },
-            onImported = { loadStats() }
+            onImported = {
+                loadStats()
+                loadCurrentScheme()
+                onSchemeChanged?.invoke()
+            }
+        )
+    }
+
+    // 当前方案选择
+    if (showSchemePicker) {
+        SchemePickerDialog(
+            currentId = currentSchemeId,
+            onDismiss = { showSchemePicker = false },
+            onChanged = {
+                loadCurrentScheme()
+                onSchemeChanged?.invoke()
+            }
         )
     }
 

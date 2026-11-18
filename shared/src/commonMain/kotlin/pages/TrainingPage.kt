@@ -72,7 +72,9 @@ fun TrainingScreen(
     val scope = rememberCoroutineScope()
 
     suspend fun reload() {
-        groups = repository.loadGroupItemsSync()
+        val allGroups = repository.loadGroupItemsSync()
+        // 只展示当前方案的分组；未选择方案时展示全部
+        groups = runCatching { data.plan.SchemeRepository.currentGroups(allGroups) }.getOrElse { allGroups }
         planTask = runCatching { data.plan.PlanRepository.todayTask() }.getOrNull()
         weekRhythm = runCatching { data.plan.PlanRepository.weekRhythm() }.getOrNull()
         data.plan.PlanRepository.refreshReminder()
@@ -85,6 +87,7 @@ fun TrainingScreen(
             runCatching { data.plan.PlanRepository.importRehabPlan() }
                 .onSuccess {
                     planMessage = "已导入 8 周康复计划（${it.groupIds.size} 个阶段）"
+                    ui.AppToast.show("已导入 8 周康复计划，并切换为当前方案")
                     val config = data.plan.ReminderController.current()
                     data.plan.ReminderController.setEnabled(true, config.hour, config.minute)
                 }
@@ -211,9 +214,10 @@ fun TrainingScreen(
             item { WeekRhythmChips(days = rhythm) }
         }
 
-        // 康复阶段（训练分组）
+        // 当前方案的训练分组（切换方案后由外层 key 触发重组，这里读到的是新方案）
         if (groups.isNotEmpty()) {
-            item { SectionHeader(text = "康复阶段") }
+            val schemeTitle = runCatching { data.plan.SchemeRepository.current()?.name }.getOrNull() ?: "全部分组"
+            item { SectionHeader(text = schemeTitle) }
             items(groups) { group ->
                 TrainingGroupRow(group = group) {
                     selectedGroup = group

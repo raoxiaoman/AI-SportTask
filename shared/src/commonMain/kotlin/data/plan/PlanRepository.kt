@@ -69,8 +69,10 @@ object PlanRepository {
             groupIds[phase.index] = groupId
         }
 
-        val state = PlanState(startDate = startDate, groupIds = groupIds, phases = phases)
+        val state = PlanState(name = "8 周康复计划", startDate = startDate, groupIds = groupIds, phases = phases)
         saveState(state)
+        // 同步纳入统一方案列表并设为当前
+        SchemeRepository.registerRehab(state.name, startDate, groupIds.values.toList())
         refreshReminder()
         return state
     }
@@ -78,6 +80,7 @@ object PlanRepository {
     suspend fun deletePlan() {
         loadState()?.let { deletePlanState(it) }
         PlatformStorageProvider.get().remove(KEY_STATE)
+        SchemeRepository.removeBySource("rehab")
         publishReminderPreview("", "", 0, todayDateString())
     }
 
