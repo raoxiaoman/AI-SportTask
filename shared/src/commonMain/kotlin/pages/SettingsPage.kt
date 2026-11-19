@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import data.SportTaskRepository
 import data.remote.AuthService
@@ -117,15 +118,7 @@ fun SettingsScreen(
         ) {
             // 页头：标题 + 头像容器
             item {
-                PageHeader(
-                    title = "设置",
-                    trailing = {
-                        IconBadge(
-                            icon = AppIcons.Person,
-                            contentDescription = "账号"
-                        )
-                    }
-                )
+                PageHeader(title = "设置")
             }
 
             // 训练设置
@@ -173,7 +166,7 @@ fun SettingsScreen(
                         SettingsSwitchRow(
                             icon = AppIcons.Voice,
                             title = "语音播报",
-                            subtitle = "倒数 5-1、开始 / 休息 / 切换 / 完成提示（本地音频，不卡顿）",
+                            subtitle = "倒数与阶段语音提示（本地音频）",
                             checked = voiceEnabled,
                             onCheckedChange = { enabled ->
                                 voiceEnabled = enabled
@@ -347,13 +340,7 @@ fun SettingsScreen(
                             icon = AppIcons.Info,
                             title = "关于应用",
                             subtitle = "版本 ${appVersionName()}",
-                            onClick = { showAboutDialog = true }
-                        )
-                        SettingsRow(
-                            icon = AppIcons.Celebrate,
-                            title = "评价我们",
-                            subtitle = "在应用商店留下评价",
-                            onClick = { },
+                            onClick = { showAboutDialog = true },
                             isLast = true
                         )
                     }
@@ -723,7 +710,9 @@ fun SettingsSwitchRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.caption,
-                    color = AppTheme.colors.inkSub
+                    color = AppTheme.colors.inkSub,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             Switch(

@@ -1150,11 +1150,19 @@ fun TrainingExecuteScreen(
 
                     Spacer(modifier = Modifier.height(AppDimens.s3))
 
-                    Text(
-                        text = "木质秒针 · 开始 / 休息 / 切换 / 完成语音播报",
-                        style = MaterialTheme.typography.caption,
-                        color = AppTheme.colors.inkMuted
-                    )
+                    // 底部提示与实际声音设置保持一致，全部关闭时不显示
+                    val enabledHints = mutableListOf<String>().apply {
+                        if (TrainingFeedback.isTickEnabled()) add("木质秒针")
+                        if (TrainingFeedback.isVoiceEnabled()) add("语音播报")
+                        if (TrainingFeedback.isSoundEnabled()) add("提示音")
+                    }
+                    if (enabledHints.isNotEmpty()) {
+                        Text(
+                            text = enabledHints.joinToString(" · "),
+                            style = MaterialTheme.typography.caption,
+                            color = AppTheme.colors.inkMuted
+                        )
+                    }
 
                     // 剩余空白收尾：内容整体聚拢在上半屏
                     Spacer(modifier = Modifier.weight(1f))

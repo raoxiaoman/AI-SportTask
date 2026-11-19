@@ -51,7 +51,6 @@ fun CheckinScreen() {
     // 筛选状态
     var searchQuery by remember { mutableStateOf("") }
     var selectedGroupId by remember { mutableStateOf<Long?>(null) }
-    var showFilterSheet by remember { mutableStateOf(false) }
 
     // 编辑状态
     var editingCheckin by remember { mutableStateOf<CheckinItemWithGroup?>(null) }
@@ -118,26 +117,18 @@ fun CheckinScreen() {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 页头：标题 + 搜索/删除入口
+            // 页头：标题 + 删除全部入口（搜索与筛选由下方搜索框、筛选条承担）
             PageHeader(
                 title = "打卡记录",
                 trailing = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(AppDimens.s2)) {
+                    if (filteredCheckins.isNotEmpty()) {
                         IconBadge(
-                            icon = AppIcons.Search,
-                            contentDescription = "搜索",
-                            // 直接可点击，规格与设置页页头徽标一致，不撑高页头行
-                            modifier = Modifier.clickable { showFilterSheet = true }
+                            icon = AppIcons.Delete,
+                            contentDescription = "删除全部打卡",
+                            tint = AppTheme.colors.danger,
+                            container = AppTheme.colors.dangerSoft,
+                            modifier = Modifier.clickable { showDeleteAllDialog = true }
                         )
-                        if (filteredCheckins.isNotEmpty()) {
-                            IconBadge(
-                                icon = AppIcons.Delete,
-                                contentDescription = "删除",
-                                tint = AppTheme.colors.danger,
-                                container = AppTheme.colors.dangerSoft,
-                                modifier = Modifier.clickable { showDeleteAllDialog = true }
-                            )
-                        }
                     }
                 }
             )
@@ -278,30 +269,6 @@ fun CheckinScreen() {
         )
     }
 
-    // 筛选弹窗：标题与按钮由 AppDialog 统一提供，内容只负责表单
-    if (showFilterSheet) {
-        AppDialog(
-            onDismissRequest = { showFilterSheet = false },
-            title = "筛选打卡记录",
-            subtitle = "按关键词或分组查看记录",
-            extraActionLabel = "清除筛选",
-            onExtraAction = {
-                searchQuery = ""
-                selectedGroupId = null
-            },
-            dismissLabel = "取消",
-            confirmLabel = "完成",
-            onConfirm = { showFilterSheet = false }
-        ) {
-            FilterDialogContent(
-                groups = groups,
-                selectedGroupId = selectedGroupId,
-                searchQuery = searchQuery,
-                onGroupSelected = { selectedGroupId = it },
-                onSearchQueryChange = { searchQuery = it }
-            )
-        }
-    }
 }
 
 private fun applyFilters(
@@ -605,71 +572,6 @@ fun EditCheckinDialog(
         }
     }
 }
-
-/**
- * 筛选弹窗的表单内容。标题、辅助操作与确认按钮统一由 [AppDialog] 提供，
- * 这里只渲染控件，避免旧版「AlertDialog 标题 + 内容里又一个标题」的重复结构。
- */
-@Composable
-fun FilterDialogContent(
-    groups: List<GroupOption>,
-    selectedGroupId: Long?,
-    searchQuery: String,
-    onGroupSelected: (Long?) -> Unit,
-    onSearchQueryChange: (String) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        AppDialogTextField(
-            value = searchQuery,
-            onValueChange = onSearchQueryChange,
-            placeholder = "搜索记录",
-            singleLine = true,
-            leadingIcon = {
-                AppIcon(
-                    imageVector = AppIcons.Search,
-                    contentDescription = "搜索",
-                    tint = AppTheme.colors.inkMuted,
-                    size = AppDimens.iconSmall
-                )
-            }
-        )
-
-        Spacer(modifier = Modifier.height(AppDimens.s6))
-        Text(
-            text = "按分组筛选",
-            style = MaterialTheme.typography.subtitle2,
-            color = AppTheme.colors.inkSub
-        )
-        Spacer(modifier = Modifier.height(AppDimens.s2))
-
-        groups.forEach { group ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onGroupSelected(group.id) }
-                    .padding(vertical = AppDimens.s1),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(
-                    selected = selectedGroupId == group.id,
-                    onClick = { onGroupSelected(group.id) },
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = AppTheme.colors.brand,
-                        unselectedColor = AppTheme.colors.inkMuted
-                    )
-                )
-                Spacer(modifier = Modifier.width(AppDimens.s2))
-                Text(
-                    text = group.name,
-                    style = MaterialTheme.typography.body1,
-                    color = AppTheme.colors.ink
-                )
-            }
-        }
-    }
-}
-
-
 
 data class CheckinItemWithGroup(
     val id: Long,

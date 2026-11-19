@@ -338,6 +338,9 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
     // 查看动作详情（图解）
     var guideAction by remember { mutableStateOf<ActionItem?>(null) }
 
+    // 待删除动作（二次确认，与删除分组行为一致）
+    var pendingDeleteAction by remember { mutableStateOf<ActionItem?>(null) }
+
     // 物理返回：详情弹窗打开时先关弹窗（Dialog 自带），否则返回分组列表
     PlatformBackHandler(enabled = !showEditScreen) { onBackClick() }
 
@@ -508,12 +511,7 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
                                 editingAction = action
                                 showEditScreen = true
                             },
-                            onDeleteClick = {
-                                scope.launch {
-                                    repository.deleteAction(action.id)
-                                    loadActions()
-                                }
-                            },
+                            onDeleteClick = { pendingDeleteAction = action },
                             onDragStart = {
                                 draggedIndex = index
                                 dragOffset = 0f
@@ -569,6 +567,24 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
             action = action,
             guide = guideFor(action.name) ?: buildFallbackGuide(action.name, action.stepsText),
             onDismiss = { guideAction = null }
+        )
+    }
+
+    // 删除动作二次确认
+    pendingDeleteAction?.let { action ->
+        AppConfirmDialog(
+            title = "删除动作",
+            message = "确定删除「${action.name}」吗？此操作无法撤销。",
+            onDismissRequest = { pendingDeleteAction = null },
+            onConfirm = {
+                scope.launch {
+                    repository.deleteAction(action.id)
+                    loadActions()
+                    pendingDeleteAction = null
+                }
+            },
+            confirmLabel = "删除",
+            danger = true
         )
     }
 }

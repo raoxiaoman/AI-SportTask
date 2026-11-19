@@ -106,21 +106,12 @@ fun StatisticsScreen() {
                 item {
                     PageHeader(
                         title = "训练数据",
-                        eyebrow = null,
                         trailing = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "本周",
-                                    style = MaterialTheme.typography.caption,
-                                    color = AppTheme.colors.inkSub
-                                )
-                                AppIcon(
-                                    imageVector = AppIcons.ChevronDown,
-                                    contentDescription = "切换周期",
-                                    tint = AppTheme.colors.inkMuted,
-                                    size = AppDimens.iconSmall
-                                )
-                            }
+                            Text(
+                                text = "本周",
+                                style = MaterialTheme.typography.caption,
+                                color = AppTheme.colors.inkSub
+                            )
                         }
                     )
                 }

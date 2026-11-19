@@ -206,7 +206,6 @@ private fun SchemeListScreen(
 private fun SchemeListHeader(onCreate: () -> Unit, onTemplate: () -> Unit) {
     PageHeader(
         title = "训练方案",
-        eyebrow = "点选卡片设为当前方案 · 点 › 查看分组",
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -276,9 +275,11 @@ private fun SchemeCard(
                 }
                 Spacer(modifier = Modifier.height(AppDimens.s1))
                 Text(
-                    text = "$sourceLabel · $groupCount 个分组 · $actionCount 个动作 · ${scheme.startDate} 开始",
+                    text = "$sourceLabel · $groupCount 个分组 · $actionCount 个动作",
                     style = MaterialTheme.typography.caption,
-                    color = AppTheme.colors.inkSub
+                    color = AppTheme.colors.inkSub,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             Box(
