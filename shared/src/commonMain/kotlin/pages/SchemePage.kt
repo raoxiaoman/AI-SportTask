@@ -1,16 +1,21 @@
 package pages
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import data.GroupItem
 import data.SportTaskRepository
 import data.plan.Scheme
@@ -130,10 +135,13 @@ private fun SchemeListScreen(
                         actionCount = actionCount,
                         onOpen = { onOpenScheme(scheme) },
                         onSetCurrent = {
-                            SchemeRepository.switchTo(scheme.id)
-                            AppToast.show("已切换为「${scheme.name}」")
-                            refresh()
-                            onSchemeChanged()
+                            // 单选范式：点当前项为空操作，不重复提示
+                            if (!isCurrent) {
+                                SchemeRepository.switchTo(scheme.id)
+                                AppToast.show("已切换为「${scheme.name}」")
+                                refresh()
+                                onSchemeChanged()
+                            }
                         },
                         onDelete = { pendingDelete = scheme }
                     )
@@ -198,7 +206,7 @@ private fun SchemeListScreen(
 private fun SchemeListHeader(onCreate: () -> Unit, onTemplate: () -> Unit) {
     PageHeader(
         title = "训练方案",
-        eyebrow = "选择或创建一套方案开始训练",
+        eyebrow = "点选卡片设为当前方案 · 点 › 查看分组",
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -236,19 +244,15 @@ private fun SchemeCard(
     }
     LiteCard(
         modifier = Modifier.padding(horizontal = AppDimens.screenPadding),
-        // 卡片主体即切换入口：非当前方案点一下就启用，当前方案点一下进详情
-        onClick = if (isCurrent) onOpen else onSetCurrent
+        // 单选范式：点卡片主体即选中为当前方案；点箭头进详情。职责单一，不再有第二个"设为当前"入口
+        onClick = onSetCurrent
     ) {
         Row(
             modifier = Modifier.padding(horizontal = AppDimens.s3, vertical = AppDimens.s3),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconBadge(
-                icon = if (scheme.isRehab) AppIcons.Training else AppIcons.Folder,
-                contentDescription = null,
-                tint = if (isCurrent) AppTheme.colors.brandStrong else AppTheme.colors.inkSub,
-                container = if (isCurrent) AppTheme.colors.brandSoft else AppTheme.colors.surfaceAlt
-            )
+            // 单选圆点：实心=当前方案，空心=未选中，一眼区分当前是哪一个
+            SchemeRadio(selected = isCurrent)
             Spacer(modifier = Modifier.width(AppDimens.s3))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -276,29 +280,6 @@ private fun SchemeCard(
                     style = MaterialTheme.typography.caption,
                     color = AppTheme.colors.inkSub
                 )
-                if (!isCurrent) {
-                    Spacer(modifier = Modifier.height(AppDimens.s2))
-                    Row(
-                        modifier = Modifier
-                            .background(color = AppTheme.colors.brandSoft, shape = AppShapes.chip)
-                            .clickable(onClick = onSetCurrent)
-                            .padding(horizontal = AppDimens.s2, vertical = AppDimens.s1),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AppIcon(
-                            AppIcons.Check,
-                            contentDescription = null,
-                            tint = AppTheme.colors.brandDeep,
-                            size = AppDimens.iconSmall
-                        )
-                        Spacer(modifier = Modifier.width(AppDimens.s1))
-                        Text(
-                            text = "设为当前方案",
-                            style = MaterialTheme.typography.caption,
-                            color = AppTheme.colors.brandDeep
-                        )
-                    }
-                }
             }
             Box(
                 modifier = Modifier.size(AppDimens.touchTarget).clickable(onClick = onDelete),
@@ -312,6 +293,24 @@ private fun SchemeCard(
             ) {
                 AppIcon(AppIcons.Chevron, contentDescription = "进入方案", tint = AppTheme.colors.inkMuted, size = AppDimens.iconSmall)
             }
+        }
+    }
+}
+
+/** 单选指示器：实心圆=当前方案，空心圆=未选中。语义明确，无 ✓ 歧义。 */
+@Composable
+private fun SchemeRadio(selected: Boolean) {
+    val ring = if (selected) AppTheme.colors.brandStrong else AppTheme.colors.inkMuted
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .border(AppDimens.hairline, ring, CircleShape)
+            .padding(AppDimens.s1)
+            .semantics { contentDescription = if (selected) "当前方案" else "未选中方案" },
+        contentAlignment = Alignment.Center
+    ) {
+        if (selected) {
+            Box(modifier = Modifier.size(12.dp).background(ring, CircleShape))
         }
     }
 }
