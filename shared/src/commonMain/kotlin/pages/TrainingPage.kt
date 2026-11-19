@@ -54,7 +54,8 @@ import kotlinx.coroutines.withContext
 fun TrainingScreen(
     onTrainingComplete: (() -> Unit)? = null,
     onImmersiveChange: (Boolean) -> Unit = {},
-    onGoToSchemes: () -> Unit = {}
+    onGoToSchemes: () -> Unit = {},
+    refreshKey: Int = 0
 ) {
     val repository = SportTaskRepository
     // 同步读取首帧数据：不再显示依赖异步加载的全屏转圈页
@@ -85,7 +86,8 @@ fun TrainingScreen(
         weekRhythm = runCatching { data.plan.SchemeRepository.weekRhythm() }.getOrNull()
     }
 
-    LaunchedEffect(Unit) {
+    // 方案切换后原地刷新数据（保留 state，避免页面重建闪现空态）
+    LaunchedEffect(refreshKey) {
         reload()
     }
 

@@ -194,27 +194,24 @@ fun MainAppScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedIndex) {
-                0 -> androidx.compose.runtime.key(schemeVersion) {
-                    TrainingScreen(
-                        onTrainingComplete = {
-                            scope.launch {
-                                val achs = AchievementManager.checkNewAchievements(repository)
-                                if (achs.isNotEmpty()) {
-                                    newAchievements = achs
-                                    showAchievements = true
-                                }
+                0 -> TrainingScreen(
+                    onTrainingComplete = {
+                        scope.launch {
+                            val achs = AchievementManager.checkNewAchievements(repository)
+                            if (achs.isNotEmpty()) {
+                                newAchievements = achs
+                                showAchievements = true
                             }
-                        },
-                        onImmersiveChange = { immersive = it },
-                        onGoToSchemes = { selectedIndex = 1 }
-                    )
-                }
-                1 -> androidx.compose.runtime.key(schemeVersion) {
-                    SchemeScreen(
-                        onSchemeChanged = { schemeVersion++ },
-                        refreshKey = schemeVersion
-                    )
-                }
+                        }
+                    },
+                    onImmersiveChange = { immersive = it },
+                    onGoToSchemes = { selectedIndex = 1 },
+                    refreshKey = schemeVersion
+                )
+                1 -> SchemeScreen(
+                    onSchemeChanged = { schemeVersion++ },
+                    refreshKey = schemeVersion
+                )
                 2 -> CheckinScreen()
                 3 -> StatisticsScreen()
                 4 -> SettingsScreen(
@@ -226,7 +223,8 @@ fun MainAppScreen(
                 )
                 else -> TrainingScreen(
                     onImmersiveChange = { immersive = it },
-                    onGoToSchemes = { selectedIndex = 1 }
+                    onGoToSchemes = { selectedIndex = 1 },
+                    refreshKey = schemeVersion
                 )
             }
         }
