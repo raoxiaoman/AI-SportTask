@@ -53,7 +53,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun TrainingScreen(
     onTrainingComplete: (() -> Unit)? = null,
-    onImmersiveChange: (Boolean) -> Unit = {}
+    onImmersiveChange: (Boolean) -> Unit = {},
+    onGoToSchemes: () -> Unit = {}
 ) {
     val repository = SportTaskRepository
     // 同步读取首帧数据：不再显示依赖异步加载的全屏转圈页
@@ -67,34 +68,15 @@ fun TrainingScreen(
     var weekRhythm by remember {
         mutableStateOf(runCatching { data.plan.PlanRepository.weekRhythm() }.getOrNull())
     }
-    var isImporting by remember { mutableStateOf(false) }
-    var planMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun reload() {
         val allGroups = repository.loadGroupItemsSync()
         // 只展示当前方案的分组；未选择方案时展示全部
         groups = runCatching { data.plan.SchemeRepository.currentGroups(allGroups) }.getOrElse { allGroups }
-        planTask = runCatching { data.plan.PlanRepository.todayTask() }.getOrNull()
-        weekRhythm = runCatching { data.plan.PlanRepository.weekRhythm() }.getOrNull()
-        data.plan.PlanRepository.refreshReminder()
-    }
-
-    fun importPlan() {
-        if (isImporting) return
-        isImporting = true
-        scope.launch {
-            runCatching { data.plan.PlanRepository.importRehabPlan() }
-                .onSuccess {
-                    planMessage = "已导入 8 周康复计划（${it.groupIds.size} 个阶段）"
-                    ui.AppToast.show("已导入 8 周康复计划，并切换为当前方案")
-                    val config = data.plan.ReminderController.current()
-                    data.plan.ReminderController.setEnabled(true, config.hour, config.minute)
-                }
-                .onFailure { planMessage = "导入失败：${it.message}" }
-            reload()
-            isImporting = false
-        }
+        // 今日卡片与本周节奏均来自当前方案，保证与下方分组属于同一方案
+        planTask = runCatching { data.plan.SchemeRepository.todayTask() }.getOrNull()
+        weekRhythm = runCatching { data.plan.SchemeRepository.weekRhythm() }.getOrNull()
     }
 
     LaunchedEffect(Unit) {
@@ -182,9 +164,7 @@ fun TrainingScreen(
         item {
             TodayTaskCard(
                 task = planTask,
-                isImporting = isImporting,
-                message = planMessage,
-                onImport = { importPlan() },
+                onGoToSchemes = onGoToSchemes,
                 onStart = { groupId ->
                     groups.firstOrNull { it.id == groupId }?.let { group ->
                         selectedGroup = group
@@ -267,9 +247,7 @@ fun WeekRhythmChips(days: List<data.plan.WeekDayStatus>) {
 @Composable
 fun TodayTaskCard(
     task: data.plan.TodayTask?,
-    isImporting: Boolean,
-    message: String?,
-    onImport: () -> Unit,
+    onGoToSchemes: () -> Unit,
     onStart: (Long) -> Unit
 ) {
     // CTA 文字按主题取色：浅色用深蓝（白底 9.8:1），深色用亮蓝（深底约 7:1）
@@ -285,22 +263,22 @@ fun TodayTaskCard(
     var startGroupId: Long? = null
 
     if (task == null) {
-        label = "训练计划"
-        title = "开始你的第一周训练"
-        subtitle = "导入 8 周康复计划，按阶段自动安排每天的动作"
+        label = "训练方案"
+        title = "选择一套方案开始训练"
+        subtitle = "从方案模板库导入，或新建自己的训练方案"
         pillText = null
         kpis = null
         showStartCta = false
-        startCtaText = "导入康复计划"
+        startCtaText = ""
     } else {
-        label = if (task.finished) "训练计划" else "今日训练 · ${task.phaseTitle}"
+        label = if (task.finished) "训练方案" else "今日训练 · ${task.phaseTitle}"
         title = task.planName
         subtitle = when {
-            task.finished -> "8 周计划已完成，保持每周 2 次训练"
+            task.finished -> "方案已全部完成，可在方案页重新开始或换新方案"
             task.notStarted -> "计划未开始 · 起始日 ${task.startDate}"
             task.completed -> "今天已完成 · 睡前做 5 分钟拉伸"
-            !task.isTrainingDay -> "今天是休息日 · 建议 5 分钟踝泵 + 拉伸"
-            else -> "康复计划 · 训练日"
+            !task.isTrainingDay -> "今天是休息日 · 建议 5 分钟拉伸放松"
+            else -> "${task.planName} · 训练日"
         }
         pillText = if (task.finished || task.notStarted) null else "第 ${task.dayInPhase + 1}/${task.phaseDays} 天"
         val reminder = data.plan.ReminderController.current()
@@ -422,11 +400,10 @@ fun TodayTaskCard(
                     Text(text = startCtaText, color = ctaTextColor)
                 }
             }
-            if (task == null) {
+            if (task == null || task.finished) {
                 Spacer(modifier = Modifier.height(AppDimens.s3))
                 Button(
-                    onClick = onImport,
-                    enabled = !isImporting,
+                    onClick = onGoToSchemes,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AppShapes.button,
                     colors = ButtonDefaults.buttonColors(
@@ -435,36 +412,10 @@ fun TodayTaskCard(
                     )
                 ) {
                     Text(
-                        text = if (isImporting) "导入中…" else "导入康复计划",
+                        text = if (task == null) "去选择方案" else "管理方案",
                         color = ctaTextColor
                     )
                 }
-            }
-            if (task != null && task.finished) {
-                Spacer(modifier = Modifier.height(AppDimens.s3))
-                Button(
-                    onClick = onImport,
-                    enabled = !isImporting,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = AppShapes.button,
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = AppTheme.colors.surface,
-                        contentColor = ctaTextColor
-                    )
-                ) {
-                    Text(
-                        text = if (isImporting) "导入中…" else "重新开始 8 周计划",
-                        color = ctaTextColor
-                    )
-                }
-            }
-            message?.let {
-                Spacer(modifier = Modifier.height(AppDimens.s2))
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.caption,
-                    color = AppTheme.colors.onBrand.copy(alpha = 0.8f)
-                )
             }
         }
     }

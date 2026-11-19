@@ -126,7 +126,7 @@ fun MainAppScreen(
 
     val navItems = listOf(
         NavItem("训练", AppIcons.Training),
-        NavItem("分组", AppIcons.Groups),
+        NavItem("方案", AppIcons.Folder),
         NavItem("打卡", AppIcons.Checkin),
         NavItem("统计", AppIcons.Stats),
         NavItem("设置", AppIcons.Settings)
@@ -205,10 +205,16 @@ fun MainAppScreen(
                                 }
                             }
                         },
-                        onImmersiveChange = { immersive = it }
+                        onImmersiveChange = { immersive = it },
+                        onGoToSchemes = { selectedIndex = 1 }
                     )
                 }
-                1 -> GroupScreen()
+                1 -> androidx.compose.runtime.key(schemeVersion) {
+                    SchemeScreen(
+                        onSchemeChanged = { schemeVersion++ },
+                        refreshKey = schemeVersion
+                    )
+                }
                 2 -> CheckinScreen()
                 3 -> StatisticsScreen()
                 4 -> SettingsScreen(
@@ -218,7 +224,10 @@ fun MainAppScreen(
                     onRequestLogin = onRequestLogin,
                     onSchemeChanged = { schemeVersion++ }
                 )
-                else -> TrainingScreen(onImmersiveChange = { immersive = it })
+                else -> TrainingScreen(
+                    onImmersiveChange = { immersive = it },
+                    onGoToSchemes = { selectedIndex = 1 }
+                )
             }
         }
     }

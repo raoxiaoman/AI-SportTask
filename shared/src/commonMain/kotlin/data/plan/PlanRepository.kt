@@ -187,12 +187,17 @@ object PlanRepository {
      * 把今日任务写入通知渠道（Android 读取后展示在提醒通知里）
      */
     suspend fun refreshReminder(today: String = todayDateString()) {
-        val state = loadState()
-        val task = todayTask(today)
+        // 通知文案优先跟随当前方案；未选方案时回退旧的康复计划数据
+        val scheme = SchemeRepository.current()
+        val task = scheme?.let { SchemeRepository.todayTask(today) } ?: todayTask(today)
+        val startDate = scheme?.startDate ?: loadState()?.startDate.orEmpty()
+        val phases = scheme?.phases?.takeIf { it.isNotEmpty() }
+            ?: loadState()?.phases?.takeIf { it.isNotEmpty() }
+            ?: rehabPhases()
         publishReminderPreview(
             text = PlanScheduler.reminderText(task),
-            startDate = state?.startDate.orEmpty(),
-            totalDays = state?.let { PlanScheduler.totalDays(it.phases.ifEmpty { rehabPhases() }) } ?: 0,
+            startDate = startDate,
+            totalDays = PlanScheduler.totalDays(phases),
             generatedDate = today
         )
     }

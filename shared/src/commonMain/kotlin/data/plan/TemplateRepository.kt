@@ -72,14 +72,20 @@ object TemplateRepository {
             newGroupIds.add(groupId)
         }
 
-        // 登记为方案并设为当前，首页会随之切到刚导入的方案
-        val scheme = SchemeRepository.register(
+        // 登记为方案并设为当前；同一模板重复导入会替换旧方案
+        val registration = SchemeRepository.register(
             templateName = template.name,
             groupPrefix = template.groupPrefix,
             startDate = startDate,
             groupIds = newGroupIds,
-            source = template.id
+            source = template.id,
+            phases = template.phases
         )
+        // 清掉旧方案遗留的分组（去重），避免同名 "(2)" 分组不断累积
+        registration.replacedGroupIds.forEach { oldId ->
+            SportTaskRepository.deleteActionsInGroup(oldId)
+            SportTaskRepository.deleteGroup(oldId)
+        }
 
         ImportResult(
             success = true,
@@ -87,7 +93,7 @@ object TemplateRepository {
             actionsImported = actionsImported,
             checkinsImported = 0,
             groupIds = newGroupIds,
-            schemeId = scheme.id
+            schemeId = registration.scheme.id
         )
     }.getOrElse { error ->
         ImportResult(

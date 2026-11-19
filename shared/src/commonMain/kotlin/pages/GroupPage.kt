@@ -34,6 +34,9 @@ import androidx.compose.ui.zIndex
 import data.SportTaskRepository
 import data.GroupItem
 import data.ActionItem
+import data.plan.Scheme
+import data.plan.SchemeRepository
+import ui.AppToast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -73,9 +76,42 @@ fun GroupScreen() {
     }
 }
 
+/**
+ * 方案内分组列表：包一层返回键与方案名标题，复用 GroupListScreen。
+ * scheme 非空时，新建/删除分组会同步维护方案归属。
+ */
+@Composable
+fun SchemeGroupsScreen(
+    scheme: Scheme,
+    revision: Int = 0,
+    onBack: () -> Unit,
+    onGroupsChanged: () -> Unit
+) {
+    var selectedGroup by remember { mutableStateOf<GroupItem?>(null) }
+    val current = selectedGroup
+    if (current != null) {
+        GroupDetailScreen(group = current, onBackClick = { selectedGroup = null })
+        return
+    }
+    PlatformBackHandler(enabled = true) { onBack() }
+    GroupListScreen(
+        scheme = scheme,
+        revision = revision,
+        onGroupClick = { selectedGroup = it },
+        onBack = onBack,
+        onGroupsChanged = onGroupsChanged
+    )
+}
+
 // 分组列表页面
 @Composable
-fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
+fun GroupListScreen(
+    scheme: Scheme? = null,
+    revision: Int = 0,
+    onBack: (() -> Unit)? = null,
+    onGroupsChanged: (() -> Unit)? = null,
+    onGroupClick: (GroupItem) -> Unit
+) {
     // 控制是否显示添加分组对话框
     var showAddDialog by remember { mutableStateOf(false) }
     // 输入的分组名称
@@ -104,11 +140,15 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
     var isLoading by remember { mutableStateOf(true) }
 
     suspend fun loadGroupsData() {
-        loadGroups(repository) { groups = it; isLoading = false }
+        loadGroups(repository) { all ->
+            // 方案模式：只显示归属该方案的分组；兼容旧数据，分组已删时展示空列表
+            groups = if (scheme != null) all.filter { it.id in scheme.groupIds } else all
+            isLoading = false
+        }
     }
 
     // 初始加载分组
-    LaunchedEffect(true) {
+    LaunchedEffect(Unit, revision) {
         loadGroupsData()
     }
 
@@ -123,11 +163,16 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
             }
             groups.isEmpty() -> {
                 Column {
-                    GroupListHeader(onAddClick = { showAddDialog = true })
+                    GroupListHeader(
+                        title = scheme?.name ?: "训练分组",
+                        showBack = onBack != null,
+                        onBack = onBack,
+                        onAddClick = { showAddDialog = true }
+                    )
                     EmptyState(
                         icon = AppIcons.Folder,
                         title = "还没有训练分组",
-                        subtitle = "创建一个分组来管理你的训练动作",
+                        subtitle = if (scheme != null) "在方案内创建第一个分组，安排你的训练动作" else "创建一个分组来管理你的训练动作",
                         actionText = "新建分组",
                         onAction = { showAddDialog = true }
                     )
@@ -137,7 +182,14 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(AppDimens.s2)
                 ) {
-                    item { GroupListHeader(onAddClick = { showAddDialog = true }) }
+                    item {
+                        GroupListHeader(
+                            title = scheme?.name ?: "训练分组",
+                            showBack = onBack != null,
+                            onBack = onBack,
+                            onAddClick = { showAddDialog = true }
+                        )
+                    }
                     items(groups) { group ->
                         GroupRow(
                             group = group,
@@ -171,8 +223,11 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                 onConfirm = {
                     scope.launch {
                         val groupToDelete = currentDeletingGroup ?: return@launch
+                        repository.deleteActionsInGroup(groupToDelete.id)
                         repository.deleteGroup(groupToDelete.id)
-                        loadGroups(repository) { groups = it }
+                        SchemeRepository.removeGroupFromScheme(groupToDelete.id)
+                        loadGroupsData()
+                        onGroupsChanged?.invoke()
                         currentDeletingGroup = null
                         showDeleteDialog = false
                     }
@@ -201,7 +256,7 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                         scope.launch {
                             val groupToEdit = currentEditingGroup ?: return@launch
                             repository.updateGroupName(groupToEdit.id, editGroupName)
-                            loadGroups(repository) { groups = it }
+                            loadGroupsData()
                         }
                         closeEdit()
                     }
@@ -239,7 +294,13 @@ fun GroupListScreen(onGroupClick: (GroupItem) -> Unit) {
                     if (groupName.isNotBlank()) {
                         scope.launch {
                             repository.addGroup(groupName, todayDateString())
-                            loadGroups(repository) { groups = it }
+                            if (scheme != null) {
+                                val newId = repository.getGroups().maxByOrNull { it.id }?.id
+                                if (newId != null) SchemeRepository.addGroupToScheme(scheme.id, newId)
+                                AppToast.show("分组已加入「${scheme.name}」")
+                            }
+                            loadGroupsData()
+                            onGroupsChanged?.invoke()
                         }
                         closeAdd()
                     }
@@ -512,20 +573,32 @@ fun GroupDetailScreen(group: GroupItem, onBackClick: () -> Unit) {
     }
 }
 
-// 分组页头：标题 + 新建入口（替代原 FAB）
+// 分组页头：返回 + 标题 + 新建入口
 @Composable
-fun GroupListHeader(onAddClick: () -> Unit) {
-    PageHeader(
-        title = "训练分组",
-        trailing = {
-            IconBadge(
-                icon = AppIcons.Add,
-                contentDescription = "新建分组",
-                // 直接可点击，规格与其他页页头徽标一致，不撑高页头行
-                modifier = Modifier.clickable(onClick = onAddClick)
-            )
+fun GroupListHeader(
+    title: String = "训练分组",
+    showBack: Boolean = false,
+    onBack: (() -> Unit)? = null,
+    onAddClick: () -> Unit
+) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if (showBack && onBack != null) {
+            IconButton(onClick = onBack) {
+                AppIcon(AppIcons.Back, contentDescription = "返回", tint = AppTheme.colors.ink)
+            }
         }
-    )
+        PageHeader(
+            title = title,
+            modifier = Modifier.weight(1f),
+            trailing = {
+                IconBadge(
+                    icon = AppIcons.Add,
+                    contentDescription = "新建分组",
+                    modifier = Modifier.clickable(onClick = onAddClick)
+                )
+            }
+        )
+    }
 }
 
 // 分组行卡：图标容器 + 名称/副标题 + 编辑/删除 + 箭头

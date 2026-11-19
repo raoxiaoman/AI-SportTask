@@ -63,17 +63,6 @@ fun SettingsScreen(
     var importResult by remember { mutableStateOf<data.ImportResult?>(null) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showTemplateLibrary by remember { mutableStateOf(false) }
-    var showSchemePicker by remember { mutableStateOf(false) }
-    var currentSchemeName by remember { mutableStateOf("全部分组") }
-    var currentSchemeId by remember { mutableStateOf<String?>(null) }
-
-    fun loadCurrentScheme() {
-        runCatching {
-            val state = data.plan.SchemeRepository.load()
-            currentSchemeId = state.currentId
-            currentSchemeName = state.schemes.firstOrNull { it.id == state.currentId }?.name ?: "全部分组"
-        }
-    }
 
     var totalGroups by remember { mutableStateOf(0) }
     var totalActions by remember { mutableStateOf(0) }
@@ -94,26 +83,6 @@ fun SettingsScreen(
     // 深色模式状态：从持久化偏好读取，与 App 入口保持一致
     var isDarkMode by remember { mutableStateOf(ThemePreference.isDark()) }
 
-    // 康复计划状态
-    var planSummary by remember { mutableStateOf("未导入") }
-    var isPlanBusy by remember { mutableStateOf(false) }
-
-    fun loadPlanSummary() {
-        scope.launch {
-            planSummary = withContext(Dispatchers.Default) {
-                runCatching {
-                    val state = data.plan.PlanRepository.loadState() ?: return@runCatching "未导入"
-                    val task = data.plan.PlanRepository.todayTask()
-                    when {
-                        task == null -> "已导入 · ${state.startDate} 开始"
-                        task.finished -> "8 周计划已完成"
-                        else -> "${state.startDate} 开始 · ${data.plan.PlanScheduler.reminderText(task)}"
-                    }
-                }.getOrElse { "未导入" }
-            }
-        }
-    }
-
     // 加载统计数据
     fun loadStats() {
         scope.launch {
@@ -127,8 +96,6 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         loadStats()
-        loadPlanSummary()
-        loadCurrentScheme()
         // 提醒开关与时间以平台侧（AlarmManager）为准，避免 UI 状态与真实闹钟不一致
         val config = data.plan.ReminderController.current()
         reminderEnabled = config.enabled
@@ -255,62 +222,8 @@ fun SettingsScreen(
                         SettingsRow(
                             icon = AppIcons.Package,
                             title = "方案模板库",
-                            subtitle = "从内置或服务端方案中选择，一键导入为分组",
-                            onClick = { showTemplateLibrary = true }
-                        )
-                        SettingsRow(
-                            icon = AppIcons.Training,
-                            title = "当前方案",
-                            subtitle = "首页展示：$currentSchemeName · 点击切换",
-                            onClick = { showSchemePicker = true }
-                        )
-                        SettingsRow(
-                            icon = AppIcons.Calendar,
-                            title = "当前计划",
-                            subtitle = planSummary,
-                            onClick = { loadPlanSummary() }
-                        )
-                        SettingsRow(
-                            icon = AppIcons.Package,
-                            title = if (isPlanBusy) "处理中…" else "导入 8 周康复计划",
-                            subtitle = "按阶段生成分组与动作，自动区分训练日与休息日",
-                            onClick = {
-                                if (isPlanBusy) return@SettingsRow
-                                isPlanBusy = true
-                                scope.launch {
-                                    runCatching { data.plan.PlanRepository.importRehabPlan() }
-                                        .onSuccess {
-                                            loadStats(); loadPlanSummary(); loadCurrentScheme()
-                                            onSchemeChanged?.invoke()
-                                            scope.launch { ui.AppToast.show("已导入 8 周康复计划，并切换为当前方案") }
-                                            // 导入计划时自动开启每日提醒（默认 21:00）
-                                            if (!reminderEnabled) {
-                                                reminderEnabled = true
-                                                data.plan.ReminderController.setEnabled(true, reminderHour, reminderMinute)
-                                            }
-                                        }
-                                        .onFailure { planSummary = "导入失败：${it.message}" }
-                                    isPlanBusy = false
-                                }
-                            }
-                        )
-                        SettingsRow(
-                            icon = AppIcons.Delete,
-                            title = "清除康复计划",
-                            subtitle = "仅删除计划生成的分组与动作，打卡记录保留",
-                            onClick = {
-                                if (isPlanBusy) return@SettingsRow
-                                isPlanBusy = true
-                                scope.launch {
-                                    runCatching { data.plan.PlanRepository.deletePlan() }
-                                    loadStats()
-                                    loadPlanSummary()
-                                    loadCurrentScheme()
-                                    onSchemeChanged?.invoke()
-                                    isPlanBusy = false
-                                }
-                            },
-                            isDestructive = true,
+                            subtitle = "从内置或服务端方案中选择，一键导入为方案",
+                            onClick = { showTemplateLibrary = true },
                             isLast = true
                         )
                     }
@@ -696,19 +609,6 @@ fun SettingsScreen(
             onDismiss = { showTemplateLibrary = false },
             onImported = {
                 loadStats()
-                loadCurrentScheme()
-                onSchemeChanged?.invoke()
-            }
-        )
-    }
-
-    // 当前方案选择
-    if (showSchemePicker) {
-        SchemePickerDialog(
-            currentId = currentSchemeId,
-            onDismiss = { showSchemePicker = false },
-            onChanged = {
-                loadCurrentScheme()
                 onSchemeChanged?.invoke()
             }
         )
