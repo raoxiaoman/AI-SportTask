@@ -236,7 +236,8 @@ private fun SchemeCard(
     }
     LiteCard(
         modifier = Modifier.padding(horizontal = AppDimens.screenPadding),
-        onClick = onOpen
+        // 卡片主体即切换入口：非当前方案点一下就启用，当前方案点一下进详情
+        onClick = if (isCurrent) onOpen else onSetCurrent
     ) {
         Row(
             modifier = Modifier.padding(horizontal = AppDimens.s3, vertical = AppDimens.s3),
@@ -275,13 +276,28 @@ private fun SchemeCard(
                     style = MaterialTheme.typography.caption,
                     color = AppTheme.colors.inkSub
                 )
-            }
-            if (!isCurrent) {
-                Box(
-                    modifier = Modifier.size(AppDimens.touchTarget).clickable(onClick = onSetCurrent),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AppIcon(AppIcons.Check, contentDescription = "设为当前", tint = AppTheme.colors.brandStrong)
+                if (!isCurrent) {
+                    Spacer(modifier = Modifier.height(AppDimens.s2))
+                    Row(
+                        modifier = Modifier
+                            .background(color = AppTheme.colors.brandSoft, shape = AppShapes.chip)
+                            .clickable(onClick = onSetCurrent)
+                            .padding(horizontal = AppDimens.s2, vertical = AppDimens.s1),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AppIcon(
+                            AppIcons.Check,
+                            contentDescription = null,
+                            tint = AppTheme.colors.brandDeep,
+                            size = AppDimens.iconSmall
+                        )
+                        Spacer(modifier = Modifier.width(AppDimens.s1))
+                        Text(
+                            text = "设为当前方案",
+                            style = MaterialTheme.typography.caption,
+                            color = AppTheme.colors.brandDeep
+                        )
+                    }
                 }
             }
             Box(
@@ -290,7 +306,12 @@ private fun SchemeCard(
             ) {
                 AppIcon(AppIcons.Delete, contentDescription = "删除方案", tint = AppTheme.colors.inkMuted, size = AppDimens.iconSmall)
             }
-            AppIcon(AppIcons.Chevron, contentDescription = "进入", tint = AppTheme.colors.inkMuted, size = AppDimens.iconSmall)
+            Box(
+                modifier = Modifier.size(AppDimens.touchTarget).clickable(onClick = onOpen),
+                contentAlignment = Alignment.Center
+            ) {
+                AppIcon(AppIcons.Chevron, contentDescription = "进入方案", tint = AppTheme.colors.inkMuted, size = AppDimens.iconSmall)
+            }
         }
     }
 }

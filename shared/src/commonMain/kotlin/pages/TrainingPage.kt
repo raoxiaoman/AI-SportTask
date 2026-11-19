@@ -58,15 +58,21 @@ fun TrainingScreen(
 ) {
     val repository = SportTaskRepository
     // 同步读取首帧数据：不再显示依赖异步加载的全屏转圈页
-    var groups by remember { mutableStateOf(repository.loadGroupItemsSync()) }
+    // 全部以【当前方案】为准，避免首帧闪现旧康复计划数据
+    var groups by remember {
+        mutableStateOf(
+            runCatching { data.plan.SchemeRepository.currentGroups(repository.loadGroupItemsSync()) }
+                .getOrDefault(repository.loadGroupItemsSync())
+        )
+    }
     var selectedGroup by remember { mutableStateOf<GroupItem?>(null) }
     var showPrepareScreen by remember { mutableStateOf(false) }
     var showExecuteScreen by remember { mutableStateOf(false) }
     var planTask by remember {
-        mutableStateOf(runCatching { data.plan.PlanRepository.todayTask() }.getOrNull())
+        mutableStateOf(runCatching { data.plan.SchemeRepository.todayTask() }.getOrNull())
     }
     var weekRhythm by remember {
-        mutableStateOf(runCatching { data.plan.PlanRepository.weekRhythm() }.getOrNull())
+        mutableStateOf(runCatching { data.plan.SchemeRepository.weekRhythm() }.getOrNull())
     }
     val scope = rememberCoroutineScope()
 
@@ -109,8 +115,8 @@ fun TrainingScreen(
                             isCompleted = if (result.completed) 1L else 0L
                         )
                     }
-                    planTask = data.plan.PlanRepository.todayTask()
-                    weekRhythm = data.plan.PlanRepository.weekRhythm()
+                    planTask = runCatching { data.plan.SchemeRepository.todayTask() }.getOrNull()
+                    weekRhythm = runCatching { data.plan.SchemeRepository.weekRhythm() }.getOrNull()
                     data.plan.PlanRepository.refreshReminder()
                     onTrainingComplete?.invoke()
                 }
