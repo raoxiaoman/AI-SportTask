@@ -727,10 +727,16 @@ private val guides: Map<String, ExerciseGuide> = mapOf(
 )
 
 /**
- * 按动作名取详细指导；未收录的动作返回 null，
- * 由调用方用 [buildFallbackGuide] 兜底。
+ * 按动作名取详细指导。
+ * 先精确匹配基础库，再匹配办公室 / 关节方案专属库；
+ * 最后做一次归一化匹配（去空格），仍未收录才返回 null 交给 [buildFallbackGuide] 兜底。
  */
-fun guideFor(name: String): ExerciseGuide? = guides[name]
+fun guideFor(name: String): ExerciseGuide? {
+    guides[name]?.let { return it }
+    officeJointGuides[name]?.let { return it }
+    val normalized = name.replace(" ", "")
+    return officeJointGuides[normalized] ?: guides[normalized]
+}
 
 /**
  * 生成该动作的视频示范搜索链接。
@@ -739,7 +745,7 @@ fun guideFor(name: String): ExerciseGuide? = guides[name]
  * 关键词里含中文，这里用纯 Kotlin 实现 UTF-8 百分号编码，三端通用且不依赖平台 API。
  */
 fun videoSearchUrl(actionName: String): String {
-    val keyword = "$actionName 康复训练 动作示范"
+    val keyword = "$actionName 动作示范教程"
     return "https://search.bilibili.com/all?keyword=${percentEncode(keyword)}"
 }
 
