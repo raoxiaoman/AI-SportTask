@@ -485,7 +485,7 @@ val officeJointGuides: Map<String, ExerciseGuide> = mapOf(
         summary = "坐姿双膝分开，手向内对抗",
         steps = listOf(
             "坐椅上，双脚踩地，双膝并拢",
-            "双膝缓慢向外打开，双手放在膝内侧施加向内的阻力",
+            "双手掌根抵住膝盖内侧，双膝向外打开与手掌对抗",
             "对抗保持 5 秒后放松，重复 10 次",
             "感受臀部外侧发力"
         ),
