@@ -271,10 +271,19 @@ fun ActionGuideDialog(
                         Spacer(modifier = Modifier.height(AppDimens.s3))
                         Button(
                             onClick = onToggleRunning,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = AppShapes.button
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .height(AppDimens.s10),
+                            contentPadding = PaddingValues(
+                                horizontal = AppDimens.s8,
+                                vertical = 0.dp
+                            ),
+                            shape = AppShapes.pill
                         ) {
-                            Text(if (isRunning) "暂停计时" else "继续计时")
+                            Text(
+                                text = if (isRunning) "暂停计时" else "继续计时",
+                                style = MaterialTheme.typography.subtitle2
+                            )
                         }
                     }
                     Spacer(modifier = Modifier.height(AppDimens.s2))
