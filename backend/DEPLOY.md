@@ -107,6 +107,26 @@ systemctl stop sporttask && cp /tmp/restore.db /var/lib/sporttask/sporttask.db &
 
 定时任务在 `/etc/cron.d/sporttask-backup`（每天 02:10）。
 
+### 更新训练模板 / 动作图解（无需发版）
+
+`/api/templates` 与 `/api/guides` 读的是随代码部署的静态文件，改完重启服务即生效，App 下次启动自动拉取合并，无需发新版：
+
+```bash
+# 1) 本地改好后只推这两个数据文件（图解由 App 内置库导出，保证单一数据源）
+scp backend/data/templates.json backend/data/guides.json \
+  root@<SERVER_IP>:/opt/sporttask/backend/data/
+ssh root@<SERVER_IP> "chown sporttask:sporttask /opt/sporttask/backend/data/*.json && \
+  systemctl restart sporttask && systemctl is-active sporttask"
+
+# 2) 验证下发内容
+curl -s https://<域名>/api/templates | head -c 200; echo
+curl -s https://<域名>/api/guides | head -c 200; echo
+```
+
+> 图解基线由 `shared/src/androidUnitTest/kotlin/ExportGuidesJson.kt` 从 App 内置库导出。
+> 若只想在服务端修正/新增个别动作，可直接编辑 `guides.json`（按 `name` 覆盖），
+> 未下发的动作继续用 App 内置图解，不会出现空白。
+
 ## 六、换成自己的域名
 
 ```bash

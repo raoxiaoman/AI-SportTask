@@ -37,6 +37,8 @@ node server.js &
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/health` | 健康检查 |
+| GET | `/api/templates` | 训练方案模板库（静态分发，App 内置同名模板兜底） |
+| GET | `/api/guides` | 动作图解资源库（示意图姿势 + 要点文案，App 内置兜底） |
 | POST | `/api/auth/signup` | 注册 {email, password} |
 | POST | `/api/auth/signin` | 登录 {email, password} |
 

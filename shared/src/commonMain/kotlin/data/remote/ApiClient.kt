@@ -12,6 +12,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import data.plan.TemplateListResponse
+import ui.GuideListResponse
 
 // ========== 请求/响应模型 ==========
 
@@ -167,6 +168,15 @@ class ApiClient {
             throw Exception("获取模板列表失败 (${response.status})")
         }
         response.body<TemplateListResponse>()
+    }
+
+    /** 公开接口，无需登录；离线/失败时调用方回退到内置图解 */
+    suspend fun guides(): Result<GuideListResponse> = runCatching {
+        val response = client.get(url("/api/guides"))
+        if (response.status.value !in 200..299) {
+            throw Exception("获取动作图解失败 (${response.status})")
+        }
+        response.body<GuideListResponse>()
     }
 
     suspend fun signup(email: String, password: String): Result<AuthResponse> = runCatching {

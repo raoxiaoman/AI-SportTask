@@ -102,6 +102,27 @@ app.get('/api/templates', (req, res) => {
   res.json(templatePayload);
 });
 
+// 动作图解资源库（公开只读）：示意图姿势 + 动作要点文案的服务端分发渠道。
+// App 内置同名图解作离线兜底；这里下发的是最新/修正版本，客户端启动后合并覆盖。
+// 与模板一致：启动时读一次静态文件，systemd 下代码目录只读，改图解=更新此文件并重启。
+const GUIDE_FILE = path.join(__dirname, 'data', 'guides.json');
+let guidePayload = { version: 1, guides: [] };
+try {
+  const parsed = JSON.parse(fs.readFileSync(GUIDE_FILE, 'utf8'));
+  if (Array.isArray(parsed.guides)) {
+    guidePayload = { version: Number(parsed.version) || 1, guides: parsed.guides };
+    console.log(`[guides] loaded ${guidePayload.guides.length} exercise guides (v${guidePayload.version})`);
+  } else {
+    console.warn(`[warn] ${GUIDE_FILE} 缺少 guides 数组，图解库将回退到 App 内置数据`);
+  }
+} catch (e) {
+  console.warn(`[warn] 读取图解文件失败：${e.message}`);
+}
+
+app.get('/api/guides', (req, res) => {
+  res.json(guidePayload);
+});
+
 // 注册
 app.post('/api/auth/signup', rateLimit, async (req, res) => {
   try {

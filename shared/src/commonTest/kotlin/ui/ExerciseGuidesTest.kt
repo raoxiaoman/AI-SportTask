@@ -1,7 +1,10 @@
 package ui
 
 import data.plan.builtInTemplates
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -52,5 +55,51 @@ class ExerciseGuidesTest {
         assertNotNull(guideFor("坐姿髌骨松动"))
         assertNotNull(guideFor("扶桌单腿站"))
         assertNotNull(guideFor("扶桌单腿站立"))
+    }
+
+    @Test
+    fun `全部内置图解可 JSON 序列化并完整往返`() {
+        val json = Json { encodeDefaults = true }
+        val originals = allBuiltInGuides()
+        assertTrue(originals.isNotEmpty())
+        originals.forEach { g ->
+            val decoded = json.decodeFromString<ExerciseGuide>(json.encodeToString(g))
+            assertEquals(g.name, decoded.name)
+            assertEquals(g.pose.arrows.size, decoded.pose.arrows.size, "${g.name} 箭头数量应一致")
+            assertEquals(g.pose.head, decoded.pose.head, "${g.name} 头部坐标应一致")
+            assertEquals(g.steps, decoded.steps, "${g.name} 步骤应一致")
+        }
+    }
+
+    @Test
+    fun `仓库合并后服务端图解覆盖同名内置项且保留其余`() {
+        try {
+            val base = allBuiltInGuides()
+            val patched = base.first().copy(summary = "服务端修正版")
+            // 模拟 load 的合并语义：内置为底，服务端覆盖同名
+            val merged = base.associateBy { it.name } + mapOf(patched.name to patched)
+            GuideRepository.resetForTest(merged.values.toList(), server = true)
+            assertEquals("服务端修正版", guideFor(patched.name)?.summary)
+            // 未覆盖的动作仍在
+            val another = base.last()
+            assertNotNull(guideFor(another.name))
+        } finally {
+            // 还原为内置库，避免测试间相互污染
+            GuideRepository.resetForTest(allBuiltInGuides())
+        }
+    }
+
+    @Test
+    fun `仓库查找支持去空格归一化匹配`() {
+        try {
+            GuideRepository.resetForTest(allBuiltInGuides())
+            // 动作名含空格的动作，去掉空格后仍能命中
+            val spaced = allBuiltInGuides().firstOrNull { it.name.contains(" ") }
+            if (spaced != null) {
+                assertNotNull(guideFor(spaced.name.replace(" ", "")))
+            }
+        } finally {
+            GuideRepository.resetForTest(allBuiltInGuides())
+        }
     }
 }

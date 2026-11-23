@@ -1,5 +1,7 @@
 package ui
 
+import kotlinx.serialization.Serializable
+
 /**
  * 动作详细指导库 —— 「动作要点」的数据源。
  *
@@ -9,6 +11,7 @@ package ui
  * videoUrl 为视频演示直链的预留字段：非空时优先打开该链接；为空时
  * 界面用 [videoSearchUrl] 生成对应动作的视频搜索入口，保证每个动作都有视频例子。
  */
+@Serializable
 data class ExerciseGuide(
     val name: String,
     /** 一句话概括（执行页要点卡顶部展示） */
@@ -727,16 +730,18 @@ private val guides: Map<String, ExerciseGuide> = mapOf(
 )
 
 /**
- * 按动作名取详细指导。
- * 先精确匹配基础库，再匹配办公室 / 关节方案专属库；
- * 最后做一次归一化匹配（去空格），仍未收录才返回 null 交给 [buildFallbackGuide] 兜底。
+ * App 内置的全部图解（基础库 + 办公室/关节专属库）。
+ * 作为离线兜底，也是导出到服务端 guides.json 的数据源；
+ * 同名项以服务端下发为准，内置项保证未联网时依旧可用。
  */
-fun guideFor(name: String): ExerciseGuide? {
-    guides[name]?.let { return it }
-    officeJointGuides[name]?.let { return it }
-    val normalized = name.replace(" ", "")
-    return officeJointGuides[normalized] ?: guides[normalized]
-}
+fun allBuiltInGuides(): List<ExerciseGuide> = (guides + officeJointGuides).values.toList()
+
+/**
+ * 按动作名取详细指导。
+ * 代理到 [GuideRepository]：优先用服务端下发的图解（含热更新），未命中再查内置库，
+ * 最后做归一化匹配（去空格），仍未收录才返回 null 交给 [buildFallbackGuide] 兜底。
+ */
+fun guideFor(name: String): ExerciseGuide? = GuideRepository.find(name)
 
 /**
  * 生成该动作的视频示范搜索链接。

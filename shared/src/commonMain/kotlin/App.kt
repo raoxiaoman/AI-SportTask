@@ -11,6 +11,7 @@ import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,7 @@ import ui.AchievementDialog
 import ui.AppIcon
 import ui.AppIcons
 import ui.AppToast
+import ui.GuideRepository
 import ui.SystemBarAppearanceEffect
 import ui.theme.*
 
@@ -115,6 +117,8 @@ fun MainAppScreen(
     var immersive by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val repository = remember { SportTaskRepository }
+    // 启动后台拉取服务端图解；仓库已用内置库初始化，失败也不影响 UI（无空态）。
+    LaunchedEffect(Unit) { GuideRepository.load() }
     // 全局 Snackbar：挂载到 Scaffold，供各页面通过 AppToast 调用
     val snackbarHostState = remember { SnackbarHostState() }
     DisposableEffect(Unit) {

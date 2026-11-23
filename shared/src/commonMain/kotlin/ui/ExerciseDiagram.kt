@@ -17,6 +17,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import ui.theme.AppTheme
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -35,6 +41,7 @@ import kotlin.math.sin
  */
 
 /** 归一化坐标点 */
+@Serializable
 data class Pt(val x: Float, val y: Float) {
     companion object {
         fun of(x: Float, y: Float) = Pt(x, y)
@@ -42,12 +49,31 @@ data class Pt(val x: Float, val y: Float) {
 }
 
 /** 矩形道具：台阶 / 椅子 / 垫子 / 平衡垫等 */
+@Serializable
 data class PoseBox(val x: Float, val y: Float, val w: Float, val h: Float, val filled: Boolean = true)
 
 /** 线状道具：墙 / 弹力带 / 毛巾等 */
+@Serializable
 data class PoseLine(val from: Pt, val to: Pt)
 
+/**
+ * 箭头列表序列化器：kotlinx.serialization 默认不支持 Pair，
+ * 这里把每个箭头编码成 {from, to} 对象，JSON 可读、服务端也容易生成。
+ */
+object ArrowListSerializer : KSerializer<List<Pair<Pt, Pt>>> {
+    @Serializable
+    private data class ArrowDto(val from: Pt, val to: Pt)
+    private val delegate = ListSerializer(ArrowDto.serializer())
+    override val descriptor: SerialDescriptor get() = delegate.descriptor
+    override fun serialize(encoder: Encoder, value: List<Pair<Pt, Pt>>) {
+        delegate.serialize(encoder, value.map { ArrowDto(it.first, it.second) })
+    }
+    override fun deserialize(decoder: Decoder): List<Pair<Pt, Pt>> =
+        delegate.deserialize(decoder).map { it.from to it.to }
+}
+
 /** 完整动作姿势 */
+@Serializable
 data class PoseSpec(
     val head: Pt,
     val neck: Pt,
@@ -61,6 +87,7 @@ data class PoseSpec(
     /** 远侧腿 [膝, 脚] */
     val legFar: List<Pt>,
     /** 动作方向箭头 */
+    @Serializable(with = ArrowListSerializer::class)
     val arrows: List<Pair<Pt, Pt>> = emptyList(),
     val props: List<PoseLine> = emptyList(),
     val boxes: List<PoseBox> = emptyList(),
