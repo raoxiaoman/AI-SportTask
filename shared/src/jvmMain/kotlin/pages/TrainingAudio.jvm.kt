@@ -12,13 +12,58 @@ import javax.sound.sampled.FloatControl
 /**
  * 桌面端训练音频播放器。
  *
- * 复用 commonMain 的 [trainingAudioSteps] 事件→片段映射，但按桌面版策略
- * 强制 voiceAllowed=false：只播放 tick / chime 等音效，中文语音片段（v*）全部跳过。
- * 这样无需系统 TTS、无需分发语音资源，跨平台表现稳定。
+ * 复用 commonMain 的 [trainingAudioSteps] 事件→片段映射：
+ * - 音效（tick / chime）用打包进 resources/audio 的 wav，通过 JVM 原生 Clip 播放；
+ * - 中文语音（v*）用 macOS 内置 `say` 实时合成播报，无需分发语音资源。
  *
- * 音效为打包进 resources/audio 的 wav，用 JVM 原生 Clip 播放；
- * rate（变速）通过 Clip 的 PLAYBACK_RATE 控制，不支持时退化为原速。
+ * 语音是否播放遵循上层 voiceAllowed（设置页的语音开关）；
+ * 非 macOS 平台没有可用的系统 TTS，自动降级为只播音效。
  */
+private object DesktopVoice {
+    /** 与 tools/generate_training_audio.sh 的语音文案保持一致 */
+    private val texts = mapOf(
+        "v5" to "五",
+        "v4" to "四",
+        "v3" to "三",
+        "v2" to "二",
+        "v1" to "一",
+        "v_start" to "开始训练",
+        "v_resume" to "继续训练",
+        "v_rest" to "休息一下",
+        "v_rest_end" to "休息结束",
+        "v_next" to "下一个动作",
+        "v_half" to "时间过半",
+        "v_complete" to "训练完成",
+        "v_skip" to "跳过"
+    )
+
+    private val isMac = System.getProperty("os.name", "")
+        .contains("Mac", ignoreCase = true)
+
+    /** 返回 false 表示该片段没有可播报的语音或平台不支持 TTS */
+    fun speak(clip: String, myGen: Int, isCurrent: () -> Boolean): Boolean {
+        val text = texts[clip] ?: return false
+        if (!isMac) return false
+        Thread {
+            runCatching {
+                if (!isCurrent()) return@runCatching
+                // GUI 启动的 app PATH 可能很精简，用绝对路径确保找到系统 TTS
+                val process = ProcessBuilder("/usr/bin/say", "-v", "Tingting", "-r", "235", text)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start()
+                DesktopAudioPlayer.registerSpeech(process, myGen)
+                try {
+                    process.waitFor()
+                } finally {
+                    DesktopAudioPlayer.unregisterSpeech(process)
+                }
+            }
+        }.apply { isDaemon = true }.start()
+        return true
+    }
+}
+
 private object DesktopAudioPlayer {
     private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "sporttask-audio").apply { isDaemon = true }
@@ -27,10 +72,22 @@ private object DesktopAudioPlayer {
     private var generation = 0
     private val pending = mutableListOf<ScheduledFuture<*>>()
     private val activeClips = mutableListOf<Clip>()
+    private val activeSpeech = mutableListOf<Pair<Process, Int>>()
 
-    /** 只保留音效片段：语音在桌面端降级为静音 */
-    private fun stepsFor(event: TrainingAudioEvent): List<TrainingAudioStep> =
-        trainingAudioSteps(event, voiceAllowed = false)
+    /** 按上层语音开关展开事件：voiceAllowed=true 时语音片段与音效一起排程 */
+    private fun stepsFor(event: TrainingAudioEvent, voiceAllowed: Boolean): List<TrainingAudioStep> =
+        trainingAudioSteps(event, voiceAllowed)
+
+    fun registerSpeech(process: Process, myGen: Int) {
+        synchronized(this) {
+            if (myGen == generation) activeSpeech.add(process to myGen)
+            else runCatching { process.destroy() }
+        }
+    }
+
+    fun unregisterSpeech(process: Process) {
+        synchronized(this) { activeSpeech.removeAll { it.first === process } }
+    }
 
     private fun playClip(step: TrainingAudioStep, myGen: Int) {
         if (myGen != generation) return
@@ -67,12 +124,16 @@ private object DesktopAudioPlayer {
         }
     }
 
-    fun play(event: TrainingAudioEvent) {
+    fun play(event: TrainingAudioEvent, voiceAllowed: Boolean) {
         val myGen = ++generation
         stopInternal(clearGeneration = false)
-        stepsFor(event).forEach { step ->
+        stepsFor(event, voiceAllowed).forEach { step ->
             val future: ScheduledFuture<*> = scheduler.schedule({
-                playClip(step, myGen)
+                if (step.isVoice) {
+                    DesktopVoice.speak(step.clip, myGen) { generation == myGen }
+                } else {
+                    playClip(step, myGen)
+                }
             }, step.delayMs, TimeUnit.MILLISECONDS)
             synchronized(this) { pending.add(future) }
         }
@@ -97,6 +158,8 @@ private object DesktopAudioPlayer {
             pending.clear()
             activeClips.toList().forEach { runCatching { it.stop() } }
             activeClips.clear()
+            activeSpeech.toList().forEach { runCatching { it.first.destroy() } }
+            activeSpeech.clear()
         }
     }
 }
@@ -106,8 +169,7 @@ actual fun prepareTrainingAudio() {
 }
 
 actual fun playTrainingAudio(event: TrainingAudioEvent, voiceAllowed: Boolean) {
-    // 桌面端忽略 voiceAllowed，始终按静音语音策略处理
-    runCatching { DesktopAudioPlayer.play(event) }
+    runCatching { DesktopAudioPlayer.play(event, voiceAllowed) }
 }
 
 actual fun stopTrainingAudio() {

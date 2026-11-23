@@ -24,6 +24,9 @@ import ui.theme.*
  * 数据来源：内置动作指导库 [guideFor]，未收录动作由调用方传入
  * [buildFallbackGuide] 的兜底结果。视频入口：videoUrl 非空时直达演示视频，
  * 否则按动作名打开 [videoSearchUrl] 生成的示范视频检索。
+ *
+ * 训练执行中打开时可传入 [onToggleRunning]，在详情里直接暂停/继续倒计时，
+ * 不必关闭详情再回到训练页找播放按钮。
  */
 @Composable
 fun ActionGuideDialog(
@@ -31,7 +34,11 @@ fun ActionGuideDialog(
     guide: ExerciseGuide,
     onDismiss: () -> Unit,
     /** 训练执行中打开时提示计时仍在继续 */
-    showTimingHint: Boolean = false
+    showTimingHint: Boolean = false,
+    /** 当前训练计时是否正在运行（仅在训练执行页传入） */
+    isRunning: Boolean = true,
+    /** 非空时显示暂停/继续计时按钮 */
+    onToggleRunning: (() -> Unit)? = null
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -248,15 +255,28 @@ fun ActionGuideDialog(
 
                 Spacer(modifier = Modifier.height(AppDimens.s4))
 
-                // 训练中打开的提示 + 底部收尾
+                // 训练中打开的计时控制 + 底部收尾
                 if (showTimingHint) {
                     Text(
-                        text = "查看详情时计时仍在继续，需要可先按暂停",
+                        text = if (onToggleRunning == null)
+                            "查看详情时计时仍在继续，需要可先按暂停"
+                        else if (isRunning) "查看详情时可在此暂停计时"
+                        else "计时已暂停，看完详情可继续",
                         style = MaterialTheme.typography.caption,
                         color = AppTheme.colors.inkMuted,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    if (onToggleRunning != null) {
+                        Spacer(modifier = Modifier.height(AppDimens.s3))
+                        Button(
+                            onClick = onToggleRunning,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = AppShapes.button
+                        ) {
+                            Text(if (isRunning) "暂停计时" else "继续计时")
+                        }
+                    }
                     Spacer(modifier = Modifier.height(AppDimens.s2))
                 }
                 Spacer(modifier = Modifier.height(AppDimens.s6))

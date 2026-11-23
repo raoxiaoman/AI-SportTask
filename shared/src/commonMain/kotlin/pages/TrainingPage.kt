@@ -824,17 +824,33 @@ fun TrainingExecuteScreen(
         } else {
             // 训练进行中
             val currentAction = actions[currentActionIndex]
+            // 休息时卡片与详情弹窗统一指向下一个动作，避免"卡片是当前动作、点开是下一动作"
+            val detailAction = if (isResting)
+                actions.getOrNull(currentActionIndex + 1) ?: currentAction
+            else currentAction
+
+            // 播放/暂停：主控制按钮与图解弹窗共用同一套逻辑，保证计时和播报状态一致
+            fun toggleRunning() {
+                if (isRunning) {
+                    TrainingFeedback.onPause()
+                } else if (hasStarted) {
+                    TrainingFeedback.onResume()
+                } else {
+                    hasStarted = true
+                    TrainingFeedback.onStart()
+                }
+                isRunning = !isRunning
+            }
 
             if (showDetailDialog) {
-                val detailAction = if (isResting)
-                    actions.getOrNull(currentActionIndex + 1) ?: currentAction
-                else currentAction
                 ActionGuideDialog(
                     action = detailAction,
                     guide = guideFor(detailAction.name)
                         ?: buildFallbackGuide(detailAction.name, detailAction.stepsText),
                     onDismiss = { showDetailDialog = false },
-                    showTimingHint = true
+                    showTimingHint = true,
+                    isRunning = isRunning,
+                    onToggleRunning = { toggleRunning() }
                 )
             }
 
@@ -977,9 +993,12 @@ fun TrainingExecuteScreen(
 
                     Spacer(modifier = Modifier.height(AppDimens.s1))
 
+                    val hasNextAction = currentActionIndex + 1 < actions.size
                     Text(
-                        text = if (isResting)
-                            "下一个：${actions.getOrNull(currentActionIndex + 1)?.name ?: "完成"}"
+                        text = if (isResting) {
+                            if (hasNextAction) "下一个：${detailAction.name} · 点开看详情"
+                            else "下一个：训练完成"
+                        }
                         // 名称下方为动作描述：取要点文案第一句，短小居中
                         else currentAction.stepsText
                             .substringBefore("。")
@@ -987,16 +1006,23 @@ fun TrainingExecuteScreen(
                             .substringBefore(";")
                             .ifBlank { "慢速均匀，全程无痛" },
                         style = MaterialTheme.typography.caption,
-                        color = AppTheme.colors.inkSub,
+                        color = if (isResting && hasNextAction) AppTheme.colors.brand
+                        else AppTheme.colors.inkSub,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = AppDimens.s4),
+                        modifier = Modifier
+                            .padding(horizontal = AppDimens.s4)
+                            .then(
+                                if (isResting && hasNextAction)
+                                    Modifier.clickable { showDetailDialog = true }
+                                else Modifier
+                            ),
                         maxLines = 2
                     )
 
                     Spacer(modifier = Modifier.height(AppDimens.s4))
 
-                    // 动作要点卡片：一句话摘要 + 完整图解入口
-                    val actionGuide = guideFor(currentAction.name)
+                    // 动作要点卡片：休息时展示下一动作，一句话摘要 + 完整图解入口
+                    val actionGuide = guideFor(detailAction.name)
                     LiteCard(onClick = { showDetailDialog = true }) {
                         Column(
                             modifier = Modifier
@@ -1012,7 +1038,7 @@ fun TrainingExecuteScreen(
                                 )
                                 Spacer(modifier = Modifier.width(AppDimens.s2))
                                 Text(
-                                    text = "动作要点",
+                                    text = if (isResting && hasNextAction) "下一动作要点" else "动作要点",
                                     style = MaterialTheme.typography.subtitle2,
                                     fontWeight = AppTypeWeight.emphasis,
                                     color = AppTheme.colors.ink
@@ -1032,7 +1058,7 @@ fun TrainingExecuteScreen(
                             }
                             Spacer(modifier = Modifier.height(AppDimens.s2))
                             Text(
-                                text = actionGuide?.summary ?: currentAction.stepsText.ifBlank {
+                                text = actionGuide?.summary ?: detailAction.stepsText.ifBlank {
                                     "保持关节在中立位，速度均匀；出现刺痛或弹响立即停止。"
                                 },
                                 style = MaterialTheme.typography.body2,
@@ -1095,17 +1121,7 @@ fun TrainingExecuteScreen(
 
                         // 暂停/开始（圆形主按钮）
                         FloatingActionButton(
-                            onClick = {
-                                if (isRunning) {
-                                    TrainingFeedback.onPause()
-                                } else if (hasStarted) {
-                                    TrainingFeedback.onResume()
-                                } else {
-                                    hasStarted = true
-                                    TrainingFeedback.onStart()
-                                }
-                                isRunning = !isRunning
-                            },
+                            onClick = { toggleRunning() },
                             backgroundColor = if (isRunning) AppTheme.colors.brandDeep else AppTheme.colors.brandStrong,
                             modifier = Modifier.size(AppDimens.playButton)
                         ) {
@@ -1246,7 +1262,12 @@ fun CompletedContent(
             modifier = Modifier.fillMaxWidth(),
             shape = AppShapes.button
         ) {
-            AppIcon(AppIcons.Check, contentDescription = null, size = AppDimens.iconSmall)
+            AppIcon(
+                imageVector = AppIcons.Check,
+                contentDescription = null,
+                tint = LocalContentColor.current,
+                size = AppDimens.iconSmall
+            )
             Spacer(modifier = Modifier.width(AppDimens.s2))
             Text("保存打卡")
         }
