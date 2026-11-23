@@ -41,7 +41,9 @@ data class UserInfo(
 data class SyncPushRequest(
     val groups: List<SyncGroup>? = null,
     val actions: List<SyncAction>? = null,
-    val checkins: List<SyncCheckin>? = null
+    val checkins: List<SyncCheckin>? = null,
+    /** 客户端本地状态（方案 SchemeState 等），键见 SyncKeys */
+    val kv: Map<String, String>? = null
 )
 
 @Serializable
@@ -54,9 +56,17 @@ data class SyncPullResponse(
     val groups: List<SyncGroup> = emptyList(),
     val actions: List<SyncAction> = emptyList(),
     val checkins: List<SyncCheckin> = emptyList(),
+    val kv: Map<String, String> = emptyMap(),
     val serverTimestamp: String = "",
     val count: Int = 0
 )
+
+/** 同步的 KV 键：方案状态 */
+object SyncKeys {
+    const val SCHEME_STATE = "scheme_state_v1"
+    /** 标记某账号已在本设备完成过首次自动落地，避免每次启动都用云端覆盖本地新数据 */
+    fun autoSyncedFlag(userId: String) = "auto_synced_$userId"
+}
 
 @Serializable
 data class SyncPushResponse(

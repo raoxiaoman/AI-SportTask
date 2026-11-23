@@ -18,6 +18,7 @@ function pull(userId, lastSyncTimestamp) {
     groups,
     actions,
     checkins,
+    kv: db.getKv(userId),
     serverTimestamp: serverTime,
     count: groups.length + actions.length + checkins.length
   };
@@ -26,7 +27,7 @@ function pull(userId, lastSyncTimestamp) {
 /**
  * 推送本地变更到云端
  */
-function push(userId, groups, actions, checkins) {
+function push(userId, groups, actions, checkins, kv) {
   let groupsImported = 0, actionsImported = 0, checkinsImported = 0;
 
   if (groups && Array.isArray(groups)) {
@@ -63,6 +64,8 @@ function push(userId, groups, actions, checkins) {
     checkinsImported = db.upsertCheckins(userId, enriched);
   }
 
+  if (kv && typeof kv === 'object') db.upsertKv(userId, kv);
+
   const serverTime = db.updateSyncState(userId);
 
   return {
@@ -87,6 +90,7 @@ function getFullData(userId) {
     groups,
     actions,
     checkins,
+    kv: db.getKv(userId),
     serverTimestamp: lastSyncAt
   };
 }

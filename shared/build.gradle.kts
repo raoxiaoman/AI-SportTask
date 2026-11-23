@@ -11,6 +11,7 @@ val appVersionName: String = findProperty("app.versionName") as String? ?: "1.0.
 
 kotlin {
     androidTarget("android")
+    jvm()
 
     listOf(
         iosX64(),
@@ -61,6 +62,15 @@ kotlin {
                 implementation("junit:junit:4.13.2")
                 implementation("org.jetbrains.kotlin:kotlin-test:1.9.23")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+                // 云端落地单测用内存库，避免依赖 Android context
+                implementation("app.cash.sqldelight:sqlite-driver:2.0.2")
+            }
+        }
+        // 桌面（JVM）专属：JDBC 数据库驱动 + Ktor OkHttp 引擎 + Java 音频合成
+        val jvmMain by getting {
+            dependencies {
+                implementation("app.cash.sqldelight:sqlite-driver:2.0.2")
+                implementation("io.ktor:ktor-client-okhttp:2.3.12")
             }
         }
         // iOS 专属测试（如 TrainingAudio 的模拟器真跑验证）。

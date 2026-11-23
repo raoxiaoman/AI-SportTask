@@ -1,6 +1,8 @@
 package data.remote
 
+import data.CloudApplyResult
 import data.SportTaskRepository
+import data.plan.SchemeRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -28,7 +30,75 @@ class SyncService(
         val total: Int get() = groupsUploaded + actionsUploaded + checkinsUploaded
     }
 
-    /** 先上传本地全量数据，再拉一次确认服务端时间戳 */
+    /** 下载落地结果 */
+    data class DownloadOutcome(
+        val groups: Int,
+        val actions: Int,
+        val checkins: Int,
+        val schemeRestored: Boolean
+    ) {
+        val total: Int get() = groups + actions + checkins
+    }
+
+    /**
+     * 登录后的自动同步：每个账号在本设备只自动落地一次。
+     *
+     * 策略是「云端为准」——新设备/重装后本地可能是空的，直接 pull 云端全量覆盖本地，
+     * 才能拿到手机端的数据。但不能每次启动都覆盖，否则用户在桌面端新增的打卡会被
+     * 云端旧数据冲掉。因此用本地标记保证一个账号只自动落地一次；之后的增量同步
+     * 交给设置页的手动同步（双向）。
+     */
+    suspend fun autoSyncOnLogin(): Result<DownloadOutcome?> = withContext(Dispatchers.Default) {
+        val state = auth.currentState
+        if (!state.isLoggedIn || state.token.isEmpty()) {
+            return@withContext Result.failure(IllegalStateException("未登录，无法同步"))
+        }
+        val accountKey = state.userId?.toString() ?: state.email
+        val storage = PlatformStorageProvider.get()
+        if (storage.load(SyncKeys.autoSyncedFlag(accountKey)) == "1") {
+            return@withContext Result.success(null) // 已自动落地过
+        }
+        runCatching {
+            val outcome = downloadFromCloud().getOrThrow()
+            // 只有真正落地了数据才写标记。云端为空时不标记，
+            // 这样手机端后续同步上来后，桌面端下次启动仍会自动拉取。
+            if (outcome.total > 0) {
+                storage.save(SyncKeys.autoSyncedFlag(accountKey), "1")
+            }
+            outcome
+        }
+    }
+
+    /**
+     * 从云端拉取全量并覆盖落地：分组/动作/打卡 + 方案状态。
+     * 云端三张表全空时不覆盖本地（见 Repository.replaceAllFromCloud）。
+     */
+    suspend fun downloadFromCloud(): Result<DownloadOutcome> = withContext(Dispatchers.Default) {
+        val state = auth.currentState
+        if (!state.isLoggedIn || state.token.isEmpty()) {
+            return@withContext Result.failure(IllegalStateException("未登录，无法同步"))
+        }
+        runCatching {
+            val pulled = api.pull(state.token).getOrThrow()
+            val applied: CloudApplyResult = SportTaskRepository.replaceAllFromCloud(
+                pulled.groups, pulled.actions, pulled.checkins
+            )
+            var schemeRestored = false
+            pulled.kv[SyncKeys.SCHEME_STATE]?.let { schemeJson ->
+                // 仅在云端方案存在时覆盖；解析失败保留本地，避免方案空白
+                schemeRestored = SchemeRepository.importStateFromJson(schemeJson)
+            }
+            DownloadOutcome(applied.groups, applied.actions, applied.checkins, schemeRestored)
+        }
+    }
+
+    /**
+     * 手动同步（双向）：先把本地全量 upsert 到云端，再把合并后的云端全量落地本地。
+     *
+     * 顺序很关键：必须先推后拉。因为落地是全量覆盖，若先拉会先把本地新增的打卡冲掉；
+     * 先推则本地新增已进云端，再拉回来时既保留了本地新增，也拿到了手机端的数据。
+     * 云端主键是确定性的 cloudId，upsert 不会重复插入。
+     */
     suspend fun sync(): Result<SyncOutcome> = withContext(Dispatchers.Default) {
         val state = auth.currentState
         if (!state.isLoggedIn || state.token.isEmpty()) {
@@ -38,16 +108,14 @@ class SyncService(
         runCatching {
             val namespace = state.userId?.toString() ?: state.email
             val request = buildPushRequest(namespace)
-
             val pushed = api.push(state.token, request).getOrThrow()
-            // 拉取一次：既确认 token 有效，也为后续双向合并留下服务端时间戳
-            val pulled = api.pull(state.token).getOrNull()
-
+            // 推送成功后再落地：此时云端已含本地新增 + 其他设备数据，落地得到完整合并结果
+            runCatching { downloadFromCloud() }
             SyncOutcome(
                 groupsUploaded = pushed.groupsImported,
                 actionsUploaded = pushed.actionsImported,
                 checkinsUploaded = pushed.checkinsImported,
-                serverTimestamp = pushed.serverTimestamp.ifBlank { pulled?.serverTimestamp ?: "" }
+                serverTimestamp = pushed.serverTimestamp
             )
         }
     }
@@ -89,7 +157,8 @@ class SyncService(
                     duration = c.duration?.toInt() ?: 0,
                     isCompleted = c.is_completed?.toInt() ?: 1
                 )
-            }
+            },
+            kv = mapOf(SyncKeys.SCHEME_STATE to SchemeRepository.exportStateJson())
         )
     }
 

@@ -1,6 +1,7 @@
 rootProject.name = "SportTask"
 
 include(":androidApp")
+include(":desktopApp")
 include(":shared")
 
 pluginManagement {

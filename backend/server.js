@@ -166,8 +166,8 @@ app.post('/api/sync/pull', auth.requireAuth, (req, res) => {
 
 // 数据同步 - 推送本地变更
 app.post('/api/sync/push', auth.requireAuth, (req, res) => {
-  const { groups, actions, checkins } = req.body || {};
-  const result = sync.push(req.userId, groups, actions, checkins);
+  const { groups, actions, checkins, kv } = req.body || {};
+  const result = sync.push(req.userId, groups, actions, checkins, kv);
   res.json(result);
 });
 

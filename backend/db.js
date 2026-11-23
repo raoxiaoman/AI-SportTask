@@ -87,6 +87,19 @@ function init() {
     )
   `);
 
+  // 通用 KV：客户端本地状态（如方案 SchemeState）随同步上云，
+  // 让新设备登录后能拿到与旧设备一致的方案结构，而不只是分组/动作。
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS cloud_kv (
+      user_id INTEGER NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT,
+      updated_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, key),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
   return db;
 }
 
@@ -223,6 +236,32 @@ function upsertCheckins(userId, checkins) {
   return txn(checkins);
 }
 
+function getKv(userId) {
+  const rows = db.prepare('SELECT key, value FROM cloud_kv WHERE user_id = ?').all(userId);
+  const map = {};
+  for (const r of rows) map[r.key] = r.value;
+  return map;
+}
+
+function upsertKv(userId, kv) {
+  if (!kv || typeof kv !== 'object' || Array.isArray(kv)) return 0;
+  const upsert = db.prepare(`
+    INSERT INTO cloud_kv (user_id, key, value, updated_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+  `);
+  const now = new Date().toISOString();
+  const txn = db.transaction((pairs) => {
+    let count = 0;
+    for (const [k, v] of pairs) {
+      if (typeof k !== 'string' || !k) continue;
+      upsert.run(userId, k, v == null ? null : String(v), now);
+      count++;
+    }
+    return count;
+  });
+  return txn(Object.entries(kv));
+}
+
 function getSyncState(userId) {
   const row = db.prepare('SELECT last_sync_at FROM sync_state WHERE user_id = ?').get(userId);
   return row ? row.last_sync_at : null;
@@ -245,6 +284,7 @@ module.exports = {
   getGroups, getActions, getCheckins,
   upsertGroups, upsertActions, upsertCheckins,
   getSyncState, updateSyncState,
+  getKv, upsertKv,
   /** 供优雅退出调用，确保 WAL 落盘 */
   close: () => db && db.close()
 };

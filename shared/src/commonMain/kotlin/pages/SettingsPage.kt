@@ -238,10 +238,10 @@ fun SettingsScreen(
                                 icon = if (isSyncing) AppIcons.Sync else AppIcons.Upload,
                                 title = if (isSyncing) "同步中..." else "手动同步",
                                 subtitle = when {
-                                    isSyncing -> "正在上传本地数据到云端"
+                                    isSyncing -> "正在与云端同步数据"
                                     syncSuccess -> syncMessage.ifEmpty { "上次同步成功" }
                                     syncError != null -> "$syncError"
-                                    else -> "把本地分组、动作、打卡记录上传到云端"
+                                    else -> "云端为准下载，再将本地数据同步上去"
                                 },
                                 onClick = {
                                     if (!isSyncing) {

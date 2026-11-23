@@ -1,10 +1,21 @@
 package data
 
 import com.raohui.sporttask.db.SportTaskDatabase
+import com.raohui.sporttask.db.SporttaskQueries
+import data.remote.SyncAction
+import data.remote.SyncCheckin
+import data.remote.SyncGroup
 import db.DatabaseProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import pages.todayDateString
+
+/** 云端数据落地统计 */
+data class CloudApplyResult(
+    val groups: Int,
+    val actions: Int,
+    val checkins: Int
+)
 
 object SportTaskRepository {
     private val db: SportTaskDatabase by lazy { DatabaseProvider.db }
@@ -181,6 +192,80 @@ object SportTaskRepository {
         q.deleteAllCheckins()
         q.deleteAllActions()
         q.deleteAllActionGroups()
+    }
+
+    /**
+     * 用云端全量快照覆盖本地（登录自动同步 / 手动同步的"下载落地"）。
+     *
+     * 关键点：
+     * - 云端 action.group_id / checkin.group_id、action_id 存的是**云端 id**，
+     *   落地时必须先建 cloudGroupId → 本地 id 的映射，否则动作会挂到错误分组。
+     * - 恢复时使用云端保存的 local_id 作为本地主键，让方案(Scheme.groupIds)引用不错位。
+     * - 云端三张表全空时直接返回、不清本地：避免用户刚换设备时把本地数据误删。
+     */
+    suspend fun replaceAllFromCloud(
+        groups: List<SyncGroup>,
+        actions: List<SyncAction>,
+        checkins: List<SyncCheckin>
+    ): CloudApplyResult = withContext(Dispatchers.Default) {
+        applyCloudSnapshot(db, q, groups, actions, checkins)
+    }
+
+    /** 纯逻辑：接收数据库实例，便于用内存库做单测 */
+    internal fun applyCloudSnapshot(
+        database: SportTaskDatabase,
+        queries: SporttaskQueries,
+        groups: List<SyncGroup>,
+        actions: List<SyncAction>,
+        checkins: List<SyncCheckin>
+    ): CloudApplyResult {
+        if (groups.isEmpty() && actions.isEmpty() && checkins.isEmpty()) {
+            return CloudApplyResult(0, 0, 0)
+        }
+        database.transaction {
+            queries.deleteAllCheckins()
+            queries.deleteAllActions()
+            queries.deleteAllActionGroups()
+
+            // 云端 group id -> 本地 group id（优先用来源 local_id 保住方案引用）
+            val groupIdMap = mutableMapOf<String, Long>()
+            var nextGroupId = 1L
+            groups.forEach { g ->
+                val localId = g.localId?.takeIf { it > 0 } ?: nextGroupId++
+                if (localId >= nextGroupId) nextGroupId = localId + 1
+                g.id?.let { groupIdMap[it] = localId }
+                queries.insertActionGroupWithId(localId, g.name, g.createdAt)
+            }
+
+            // 云端 action id -> 本地 action id
+            val actionIdMap = mutableMapOf<String, Long>()
+            var nextActionId = 1L
+            actions.forEach { a ->
+                val localGroupId = a.groupId?.let { groupIdMap[it] } ?: return@forEach
+                val localId = a.localId?.takeIf { it > 0 } ?: nextActionId++
+                if (localId >= nextActionId) nextActionId = localId + 1
+                a.id?.let { actionIdMap[it] = localId }
+                queries.insertActionWithId(
+                    localId, localGroupId, a.name, a.stepsText,
+                    a.defaultTime.toLong(), a.restTime.toLong(),
+                    a.orderIndex.toLong(), a.createdAt
+                )
+            }
+
+            checkins.forEach { c ->
+                val localGroupId = c.groupId?.let { groupIdMap[it] }
+                val localActionId = c.actionId?.let { actionIdMap[it] }
+                val duration = c.duration.toLong()
+                val completed = c.isCompleted.toLong()
+                val localId = c.localId?.takeIf { it > 0 }
+                if (localId != null) {
+                    queries.insertCheckinWithId(localId, c.date, localGroupId, localActionId, duration, completed)
+                } else {
+                    queries.insertCheckin(c.date, localGroupId, localActionId, duration, completed)
+                }
+            }
+        }
+        return CloudApplyResult(groups.size, actions.size, checkins.size)
     }
 
     // Export data as JSON

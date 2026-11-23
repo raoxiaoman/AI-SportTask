@@ -1,12 +1,12 @@
 # AI SportTask 🏋️
 
 [![Android 自动打包](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml/badge.svg)](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml)
-[![Release v1.0.6](https://img.shields.io/badge/Release-v1.0.6-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.6)
+[![Release v1.0.7](https://img.shields.io/badge/Release-v1.0.7-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.7)
 
 个人运动任务管理与打卡应用，基于 Kotlin Multiplatform + Compose Multiplatform，支持 Android 与 iOS，可选自托管云同步。
 
-> **最新版本 [v1.0.6](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.6)**（2026-11-23）
-> · [下载 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.6/AI-SportTask-v1.0.6-release.apk)
+> **最新版本 [v1.0.7](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.0.7)**（2026-11-23）
+> · [下载 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.0.7/AI-SportTask-v1.0.7-release.apk)
 > · [全部 Release](https://github.com/raoxiaoman/AI-SportTask/releases)
 >
 > 云同步服务端可自托管（`backend/`，已提供 systemd + Caddy 部署手册）；未配置服务器时，登录页可选「先不登录 · 离线使用」，本地功能不受影响。
@@ -27,10 +27,25 @@
 到 [Releases](https://github.com/raoxiaoman/AI-SportTask/releases) 下载最新的 `AI-SportTask-vX.Y.Z-release.apk`：
 
 ```bash
-adb install -r AI-SportTask-v1.0.6-release.apk
+adb install -r AI-SportTask-v1.0.7-release.apk
 ```
 
 > 若之前装的是自行编译的 Debug 包，需先卸载再装（签名不同）；正式版本之间可直接覆盖升级。
+
+### 桌面版（macOS / Windows / Linux）
+
+除手机端外，还提供基于 Compose Multiplatform 的桌面版，UI 与功能与手机端一致（共用 `commonMain`）。
+到 [Releases](https://github.com/raoxiaoman/AI-SportTask/releases) 下载对应平台的安装包：
+
+- macOS：`SportTask-Desktop-X.Y.Z.dmg`
+- Windows：`SportTask-Desktop-X.Y.Z.msi`
+- Linux：`SportTask-Desktop-X.Y.Z.deb`
+
+桌面版说明：
+
+- **音效保留、语音降级**：倒计时秒针与提示音正常播放，中文语音播报在桌面端静音（不依赖系统 TTS，跨平台稳定）；设置页的「语音播报」开关在桌面端无实际效果。
+- **本地数据**：登录会话、服务器地址、主题等存在 `~/.sporttask/`，训练数据在同目录的 SQLite 文件中；ESC 键等效于手机端返回键。
+- **各平台安装包需在对应系统构建**：macOS 出 `.dmg`、Windows 出 `.msi`、Linux 出 `.deb`，CI 可按平台分别产出。
 
 ## 本地运行
 
@@ -43,6 +58,14 @@ cd AI-SportTask
 
 # iOS：用 Xcode 打开 iosApp/iosApp.xcodeproj 后运行，
 #      命令行构建参数见 docs/iOS-Deployment-Checklist.md
+
+# 桌面版（当前系统）
+./gradlew :desktopApp:run
+
+# 桌面版安装包（各平台需在对应系统构建）
+./gradlew :desktopApp:packageDmg   # macOS
+./gradlew :desktopApp:packageMsi   # Windows
+./gradlew :desktopApp:packageDeb   # Linux
 ```
 
 云同步为可选能力。服务端随仓库提供（`backend/`，Node.js + Express + SQLite），部署步骤见 [backend/DEPLOY.md](backend/DEPLOY.md)；App 登录页「服务器设置」填写对外地址即可，未部署时用离线模式。方案模板库通过服务端 `GET /api/templates` 分发，客户端自带同名模板作为离线兜底。
@@ -53,8 +76,8 @@ cd AI-SportTask
 - 推送 `v*` 标签：自动产出**签名 Release APK** 并创建 GitHub Release
 
 ```bash
-git tag -a v1.0.6 -m "AI SportTask v1.0.6"
-git push origin v1.0.6
+git tag -a v1.0.7 -m "AI SportTask v1.0.7"
+git push origin v1.0.7
 ```
 
 版本号由标签决定，安装包文件名、Release 标题与 App 内「关于」保持一致。Release 签名密钥保存在仓库 Secrets 中，不进入代码库。
@@ -64,9 +87,11 @@ git push origin v1.0.6
 - [界面与设计规范](docs/UI设计规范.md)
 - [训练音频素材与授权](docs/训练音频素材.md)
 - [iOS 部署清单](docs/iOS-Deployment-Checklist.md)
+- [桌面版构建说明](docs/桌面版构建说明.md)
 
 ## 版本记录
 
+- **v1.0.7** — 云同步改为双向并支持登录自动同步：登录后自动拉取云端数据（以云端为准落地分组/动作/打卡与方案），手动同步改为先推后拉保证本地新增不丢；新增桌面版（macOS/Windows/Linux）
 - **v1.0.6** — 动作图解改为服务端分发（`/api/guides`），内置库兜底且启动热更新：修正示意图与要点文案无需再发版；为办公室/关节方案补齐专属图解，修正示意图与动作不符
 - **v1.0.5** — 「方案」页升级为两级结构并改用单选切换；今日卡片、本周节奏与通知均跟随当前方案；新增第三套「久坐三关节恢复」模板；重复导入自动替换不留重复分组；全页面 UI/交互审查修复；消除切换方案时空态闪现
 - **v1.0.4** — 新增方案模板库：康复与办公室两套方案支持服务端分发与离线内置，一键导入为分组（重名自动加后缀）

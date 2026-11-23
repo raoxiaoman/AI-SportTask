@@ -25,6 +25,7 @@ import data.SportTaskRepository
 import data.remote.AuthService
 import data.remote.ServerConfig
 import data.remote.OfflineMode
+import data.remote.SyncService
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import pages.*
@@ -127,6 +128,16 @@ fun MainAppScreen(
     }
     // 当前方案版本号：切换方案后 +1，作为 key 让首页等页面强制重组刷新
     var schemeVersion by remember { mutableStateOf(0) }
+
+    // 登录自动同步：每账号首次进入主界面时落地一次云端数据（云端为准）。
+    // 落地后 schemeVersion++ 让首页/方案页立即读到新数据；失败静默，不影响离线使用。
+    LaunchedEffect(authService.isLoggedIn) {
+        if (!authService.isLoggedIn) return@LaunchedEffect
+        SyncService(authService).autoSyncOnLogin().fold(
+            onSuccess = { outcome -> if (outcome != null && outcome.total > 0) schemeVersion++ },
+            onFailure = { /* 离线或网络失败：保留本地数据，不打断使用 */ }
+        )
+    }
 
     val navItems = listOf(
         NavItem("训练", AppIcons.Training),

@@ -36,6 +36,10 @@ SELECT id, name, created_at FROM action_group WHERE id = ?;
 insertActionGroup:
 INSERT INTO action_group(name, created_at) VALUES (?, ?);
 
+-- 云端落地用：保留来源本地主键 id，使方案(group id 引用)不错位
+insertActionGroupWithId:
+INSERT INTO action_group(id, name, created_at) VALUES (?, ?, ?);
+
 updateActionGroupName:
 UPDATE action_group SET name = ? WHERE id = ?;
 
@@ -51,6 +55,9 @@ SELECT id, group_id, name, steps_text, default_time, rest_time, order_index, cre
 
 insertAction:
 INSERT INTO action(group_id, name, steps_text, default_time, rest_time, order_index, created_at) VALUES (?, ?, ?, ?, ?, ?, ?);
+
+insertActionWithId:
+INSERT INTO action(id, group_id, name, steps_text, default_time, rest_time, order_index, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 updateAction:
 UPDATE action SET group_id = ?, name = ?, steps_text = ?, default_time = ?, rest_time = ?, order_index = ?, created_at = ? WHERE id = ?;
@@ -70,6 +77,9 @@ DELETE FROM action WHERE group_id = ?;
 -- Checkin queries
 insertCheckin:
 INSERT INTO checkin(date, group_id, action_id, duration, is_completed) VALUES (?, ?, ?, ?, ?);
+
+insertCheckinWithId:
+INSERT INTO checkin(id, date, group_id, action_id, duration, is_completed) VALUES (?, ?, ?, ?, ?, ?);
 
 getCheckinsByDateRange:
 SELECT id, date, group_id, action_id, duration, is_completed FROM checkin WHERE date BETWEEN ? AND ? ORDER BY date;

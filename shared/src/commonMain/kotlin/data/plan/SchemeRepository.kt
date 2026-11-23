@@ -59,6 +59,21 @@ object SchemeRepository {
         cached = state
     }
 
+    /** 导出方案状态 JSON，供云同步写入 KV */
+    fun exportStateJson(): String = json.encodeToString(SchemeState.serializer(), load())
+
+    /**
+     * 从云端 JSON 覆盖本地方案状态（登录首次落地 / 手动同步下载）。
+     * 云端方案里的 groupIds 是来源设备的本地分组 id，与落地时按 local_id 恢复的分组主键一致。
+     * 解析失败时保留本地状态，绝不写入坏数据导致方案空白。
+     */
+    fun importStateFromJson(text: String): Boolean {
+        val state = runCatching { json.decodeFromString<SchemeState>(text) }.getOrNull()
+            ?: return false
+        save(state)
+        return true
+    }
+
     fun all(): List<Scheme> = load().schemes
 
     fun current(): Scheme? {
