@@ -365,22 +365,24 @@ val officeJointGuides: Map<String, ExerciseGuide> = mapOf(
 
     "踝外翻自我抗阻" to ExerciseGuide(
         name = "踝外翻自我抗阻",
-        summary = "双脚并拢互顶，患脚向外翻",
+        summary = "手掌根抵住脚外侧，脚向外翻对抗",
         steps = listOf(
-            "坐姿或站姿，双脚外侧并拢互相顶住",
-            "患脚缓慢用力向外翻，对侧脚给阻力对抗",
-            "保持 10 秒后放松，做 4 次",
-            "用力温和，关节位置基本不动"
+            "坐姿或站姿，患脚脚跟着地，脚掌平放",
+            "对侧手掌根抵住患脚外侧（小趾侧），向身体内侧轻推作为阻力",
+            "患脚缓慢向外翻（脚底朝外）顶住手掌，保持 10 秒后放松，做 4 次",
+            "用力温和，脚跟与踝关节位置基本不动"
         ),
         tips = listOf("感受小腿外侧腓骨肌发力", "对抗用力约三成即可", "动作缓慢不弹震"),
         cautions = listOf("踝外侧疼痛立即停止", "不要用力过猛扭伤"),
         pose = PoseSpec(
             head = ojSeated.head, neck = ojSeated.neck, hip = ojSeated.hip,
-            armNear = listOf(pt(38f, 50f), pt(38f, 62f)),
-            armFar = listOf(pt(58f, 50f), pt(58f, 62f)),
-            legNear = listOf(pt(66f, 72f), pt(80f, 86f)),
-            legFar = listOf(pt(60f, 72f), pt(72f, 86f)),
-            arrows = listOf(pt(86f, 86f) to pt(94f, 82f))
+            // 手掌根顶在脚外侧向内推，脚向外翻顶手：二者方向相反才形成抗阻
+            armNear = listOf(pt(70f, 55f), pt(84f, 78f)),
+            armFar = listOf(pt(38f, 52f), pt(40f, 64f)),
+            legNear = listOf(pt(66f, 70f), pt(80f, 86f)),
+            legFar = listOf(pt(58f, 72f), pt(70f, 85f)),
+            arrows = listOf(pt(94f, 76f) to pt(84f, 82f), pt(78f, 88f) to pt(88f, 84f)),
+            boxes = listOf(ojChair)
         )
     ),
 

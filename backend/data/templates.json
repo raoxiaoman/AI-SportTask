@@ -128,7 +128,7 @@
             { "name": "坐姿踝泵", "detail": "坐稳勾脚停 1 秒、绷脚停 1 秒，30 次。消肿第一优先，久坐每小时都做", "seconds": 60, "restSeconds": 10 },
             { "name": "空中画字母", "detail": "一脚悬空写 A-Z 或画 8 字，幅度到无痛极限，脚踝全范围活动", "seconds": 45, "restSeconds": 10 },
             { "name": "踝四方向等长", "detail": "手或桌腿给阻力，背屈跖屈内翻外翻各 10 秒 × 2，三成力、关节不动", "seconds": 90, "restSeconds": 15 },
-            { "name": "踝外翻自我抗阻", "detail": "双脚并拢互顶，患脚向外顶 10 秒 × 4，腓骨肌别偷懒", "seconds": 45, "restSeconds": 10 },
+            { "name": "踝外翻自我抗阻", "detail": "手掌根抵脚外侧，脚向外翻对抗 10 秒 × 4，腓骨肌别偷懒", "seconds": 45, "restSeconds": 10 },
             { "name": "坐姿提踵", "detail": "坐椅前 1/2，双脚慢起 2 秒停 1 秒慢落，15 次，感受小腿泵血", "seconds": 60, "restSeconds": 10 },
             { "name": "扶桌单腿站", "detail": "手指轻搭桌沿，单腿 20-30 秒换侧，踝不晃；恢复期改双脚站", "seconds": 60, "restSeconds": 15 }
           ]
