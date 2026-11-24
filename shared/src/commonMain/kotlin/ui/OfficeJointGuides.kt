@@ -482,10 +482,10 @@ val officeJointGuides: Map<String, ExerciseGuide> = mapOf(
 
     "坐姿髋外展" to ExerciseGuide(
         name = "坐姿髋外展",
-        summary = "坐姿双膝分开，手向内对抗",
+        summary = "坐姿双膝分开，手扶膝外侧向内对抗",
         steps = listOf(
             "坐椅上，双脚踩地，双膝并拢",
-            "双手掌根抵住膝盖内侧，双膝向外打开与手掌对抗",
+            "双手掌根抵住两膝外侧向内推，双膝同时向外打开对抗手掌",
             "对抗保持 5 秒后放松，重复 10 次",
             "感受臀部外侧发力"
         ),
@@ -493,11 +493,12 @@ val officeJointGuides: Map<String, ExerciseGuide> = mapOf(
         cautions = listOf("髋关节疼痛立即停止", "腰不要跟着后仰"),
         pose = PoseSpec(
             head = ojSeated.head, neck = ojSeated.neck, hip = ojSeated.hip,
-            armNear = listOf(pt(40f, 52f), pt(52f, 64f)),
-            armFar = listOf(pt(56f, 52f), pt(46f, 64f)),
+            // 手在膝外侧向内推，膝向外顶：二者方向相反才形成抗阻
+            armNear = listOf(pt(64f, 50f), pt(72f, 66f)),
+            armFar = listOf(pt(32f, 50f), pt(24f, 66f)),
             legNear = listOf(pt(66f, 68f), pt(70f, 88f)),
             legFar = listOf(pt(32f, 68f), pt(28f, 88f)),
-            arrows = listOf(pt(74f, 66f) to pt(84f, 62f), pt(24f, 66f) to pt(14f, 62f)),
+            arrows = listOf(pt(80f, 62f) to pt(70f, 66f), pt(16f, 62f) to pt(26f, 66f)),
             boxes = listOf(ojChair)
         )
     ),
