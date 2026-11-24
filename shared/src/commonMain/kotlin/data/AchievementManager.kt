@@ -1,5 +1,7 @@
 package data
 
+import data.remote.PlatformStorage
+import data.remote.PlatformStorageProvider
 import pages.todayDateString
 
 /**
@@ -31,10 +33,36 @@ val ALL_ACHIEVEMENTS = listOf(
 
 object AchievementManager {
 
+    private const val UNLOCKED_KEY = "sporttask_unlocked_achievements"
+    private const val SEP = ","
+
+    /** 可注入存储，便于测试；默认走平台持久化（Android SharedPreferences / iOS NSUserDefaults） */
+    private var storageProvider: () -> PlatformStorage = { PlatformStorageProvider.get() }
+
+    internal fun setStorageProviderForTest(provider: (() -> PlatformStorage)?) {
+        storageProvider = provider ?: { PlatformStorageProvider.get() }
+    }
+
+    private fun loadUnlocked(): Set<String> {
+        val raw = runCatching { storageProvider().load(UNLOCKED_KEY) }.getOrNull()
+        return raw?.takeIf { it.isNotBlank() }
+            ?.split(SEP)
+            ?.filter { it.isNotBlank() }
+            ?.toSet()
+            ?: emptySet()
+    }
+
+    private fun saveUnlocked(ids: Set<String>) {
+        runCatching { storageProvider().save(UNLOCKED_KEY, ids.joinToString(SEP)) }
+    }
+
     /**
-     * 检查训练结束后新解锁的成就
-     * @param repository 数据仓库
-     * @return 新解锁的成就列表
+     * 检查训练结束后新解锁的成就（只返回此前未解锁过的成就）。
+     *
+     * 修复：此前仅按当前统计筛选达标成就、不记录已解锁状态，
+     * 导致每次训练完成都把 first_checkin 等已达成就当成「新解锁」重复弹窗。
+     * 现在读取平台持久化的已解锁 id 做差集，并立即写回，
+     * 既避免重复弹出，也保证重启后不再弹出。
      */
     suspend fun checkNewAchievements(repository: SportTaskRepository): List<Achievement> {
         val allCheckins = repository.getCheckinsByDateRange("1970-01-01", "2099-12-31")
@@ -54,9 +82,20 @@ object AchievementManager {
                 expectedDate = dateStr
             } else if (diff > 1) break
         }
-        val streakDays = streakCount
+        return computeNewAchievements(totalCount, streakCount, totalDuration, maxDuration)
+    }
 
-        return ALL_ACHIEVEMENTS.filter { ach ->
+    /**
+     * 按统计数据计算新解锁成就并立即写回持久化。
+     * 抽出为纯统计入参，便于测试「重复调用不重复返回」的回归场景。
+     */
+    internal fun computeNewAchievements(
+        totalCount: Int,
+        streakDays: Int,
+        totalDuration: Long,
+        maxDuration: Long
+    ): List<Achievement> {
+        val achieved = ALL_ACHIEVEMENTS.filter { ach ->
             when (ach.id) {
                 "first_checkin" -> totalCount >= 1
                 "three_streak" -> streakDays >= 3
@@ -71,6 +110,12 @@ object AchievementManager {
                 else -> false
             }
         }
+
+        val unlocked = loadUnlocked()
+        val newOnes = achieved.filterNot { it.id in unlocked }
+        if (newOnes.isNotEmpty()) {
+            saveUnlocked(unlocked + newOnes.map { it.id })
+        }
+        return newOnes
     }
 }
-
