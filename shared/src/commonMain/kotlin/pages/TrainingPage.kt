@@ -37,7 +37,7 @@ import ui.LiteCard
 import ui.PageHeader
 import ui.PlatformBackHandler
 import ui.SectionHeader
-import ui.ActionGuideDialog
+import ui.ActionGuidePanel
 import ui.ExerciseGuide
 import ui.buildFallbackGuide
 import ui.guideFor
@@ -842,17 +842,10 @@ fun TrainingExecuteScreen(
                 isRunning = !isRunning
             }
 
-            if (showDetailDialog) {
-                ActionGuideDialog(
-                    action = detailAction,
-                    guide = guideFor(detailAction.name)
-                        ?: buildFallbackGuide(detailAction.name, detailAction.stepsText),
-                    onDismiss = { showDetailDialog = false },
-                    showTimingHint = true,
-                    isRunning = isRunning,
-                    onToggleRunning = { toggleRunning() }
-                )
-            }
+            // 详情页改为训练页内嵌面板（与倒计时环互斥），不再新开全屏 Dialog。
+            // 计时/控制状态全部来自本页，图解里的倒计时条与主控制按钮共用 toggleRunning。
+            val detailGuide = guideFor(detailAction.name)
+                ?: buildFallbackGuide(detailAction.name, detailAction.stepsText)
 
             val totalTimeForPhase = if (isResting) currentAction.restTime else currentAction.defaultTime
             val progress = if (totalTimeForPhase > 0) {
@@ -876,10 +869,12 @@ fun TrainingExecuteScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = {
+                        if (showDetailDialog) showDetailDialog = false else onBackClick()
+                    }) {
                         AppIcon(
                             imageVector = AppIcons.Close,
-                            contentDescription = "退出训练",
+                            contentDescription = if (showDetailDialog) "收起图解" else "退出训练",
                             tint = AppTheme.colors.ink,
                             size = AppDimens.icon
                         )
@@ -905,6 +900,21 @@ fun TrainingExecuteScreen(
                         .weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    if (showDetailDialog) {
+                        // 展开态：图解内嵌在本页，顶部常驻倒计时+暂停，计时不中断
+                        ActionGuidePanel(
+                            action = detailAction,
+                            guide = detailGuide,
+                            remainingSeconds = remainingSeconds,
+                            isRunning = isRunning,
+                            isResting = isResting,
+                            onCollapse = { showDetailDialog = false },
+                            onToggleRunning = { toggleRunning() }
+                        )
+                    } else Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                     Spacer(modifier = Modifier.height(AppDimens.s2))
                     Text(
                         text = if (isResting) "休息一下" else "当前动作 · ${currentAction.name}",
@@ -1184,6 +1194,7 @@ fun TrainingExecuteScreen(
 
                     // 剩余空白收尾：内容整体聚拢在上半屏
                     Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }
