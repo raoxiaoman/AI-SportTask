@@ -7,6 +7,7 @@ import ui.theme.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -1213,84 +1215,168 @@ fun CompletedContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(AppDimens.s4),
+            .padding(horizontal = AppDimens.s4, vertical = AppDimens.s8),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        IconBadge(
-            icon = AppIcons.Check,
-            contentDescription = "完成",
-            tint = AppTheme.colors.success,
-            container = AppTheme.colors.successSoft,
-            size = AppDimens.iconHero
-        )
+        // 双层圆形完成徽章：柔光外圈 + 实心内圈 + 白色对勾，比小方图标更有仪式感
+        Box(
+            modifier = Modifier
+                .size(AppDimens.logoSize)
+                .background(AppTheme.colors.successSoft, shape = CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(AppDimens.iconHero)
+                    .background(AppTheme.colors.success, shape = CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                AppIcon(
+                    imageVector = AppIcons.Check,
+                    contentDescription = "完成",
+                    tint = AppTheme.colors.onBrand,
+                    size = AppDimens.iconLarge
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(AppDimens.s6))
 
         Text(
             text = "训练完成！",
-            style = MaterialTheme.typography.h4
+            style = MaterialTheme.typography.h4,
+            fontWeight = AppTypeWeight.emphasis,
+            color = AppTheme.colors.ink
         )
 
-        Spacer(modifier = Modifier.height(AppDimens.s4))
+        Spacer(modifier = Modifier.height(AppDimens.s1))
 
-        Row(
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth()
+        Text(
+            text = "今天的 ${group.name} 已练完，做得很好",
+            style = MaterialTheme.typography.body2,
+            color = AppTheme.colors.inkSub,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(AppDimens.s8))
+
+        // 统计卡片：图标 + 数值 + 标签，中间细分隔线，替代原来的两个裸数字
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = AppShapes.card,
+            backgroundColor = AppTheme.colors.surface,
+            elevation = AppDimens.zero,
+            border = BorderStroke(AppDimens.divider, AppTheme.colors.outline)
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "$actionCount",
-                    style = MaterialTheme.typography.h3,
-                    fontWeight = AppTypeWeight.emphasis,
-                    color = AppTheme.colors.brandStrong
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = AppDimens.s4),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CompletedStatCell(
+                    modifier = Modifier.weight(1f),
+                    icon = AppIcons.Training,
+                    value = "$actionCount",
+                    label = "完成动作"
                 )
-                Text(
-                    text = "动作数",
-                    style = MaterialTheme.typography.caption,
-                    color = AppTheme.colors.inkSub
+                Box(
+                    modifier = Modifier
+                        .width(AppDimens.divider)
+                        .height(AppDimens.s10)
+                        .background(AppTheme.colors.outline)
                 )
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = formatTime(totalSeconds),
-                    style = MaterialTheme.typography.h3,
-                    fontWeight = AppTypeWeight.emphasis,
-                    color = AppTheme.colors.brandStrong
-                )
-                Text(
-                    text = "总时长",
-                    style = MaterialTheme.typography.caption,
-                    color = AppTheme.colors.inkSub
+                CompletedStatCell(
+                    modifier = Modifier.weight(1f),
+                    icon = AppIcons.Clock,
+                    value = formatTime(totalSeconds),
+                    label = "总时长"
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(AppDimens.s12))
+        Spacer(modifier = Modifier.height(AppDimens.s10))
 
+        // 主按钮：图标绝对定位在左，文字用 Box 居中，保证与次按钮文字在同一中轴线
         Button(
             onClick = onSaveCheckin,
-            modifier = Modifier.fillMaxWidth(),
-            shape = AppShapes.button
-        ) {
-            AppIcon(
-                imageVector = AppIcons.Check,
-                contentDescription = null,
-                tint = LocalContentColor.current,
-                size = AppDimens.iconSmall
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(AppDimens.buttonHeight),
+            shape = AppShapes.button,
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = AppTheme.colors.brandStrong,
+                contentColor = AppTheme.colors.onBrand
             )
-            Spacer(modifier = Modifier.width(AppDimens.s2))
-            Text("保存打卡")
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                AppIcon(
+                    imageVector = AppIcons.Checkin,
+                    contentDescription = null,
+                    tint = LocalContentColor.current,
+                    size = AppDimens.iconSmall,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                )
+                Text(
+                    text = "保存打卡",
+                    style = MaterialTheme.typography.button,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(AppDimens.s4))
+        Spacer(modifier = Modifier.height(AppDimens.s3))
 
         OutlinedButton(
             onClick = onSkip,
-            modifier = Modifier.fillMaxWidth(),
-            shape = AppShapes.button
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(AppDimens.buttonHeight),
+            shape = AppShapes.button,
+            border = BorderStroke(AppDimens.divider, AppTheme.colors.outline),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = AppTheme.colors.inkSub)
         ) {
-            Text("暂不打卡")
+            Text(
+                text = "暂不打卡",
+                style = MaterialTheme.typography.button,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
         }
+    }
+}
+
+/** 完成页统计卡片中的单格：图标在上、大数值居中、标签在下 */
+@Composable
+private fun CompletedStatCell(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    value: String,
+    label: String
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        AppIcon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = AppTheme.colors.brand,
+            size = AppDimens.icon
+        )
+        Spacer(modifier = Modifier.height(AppDimens.s1))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.h4,
+            fontWeight = AppTypeWeight.emphasis,
+            color = AppTheme.colors.brandStrong
+        )
+        Spacer(modifier = Modifier.height(AppDimens.s1))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.caption,
+            color = AppTheme.colors.inkSub
+        )
     }
 }
