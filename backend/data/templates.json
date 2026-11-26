@@ -13,15 +13,15 @@
           "days": 14,
           "everyOtherDay": false,
           "exercises": [
-            { "name": "踝泵", "detail": "勾脚-绷脚，慢速全程无痛。20 次 × 3 组", "seconds": 60, "restSeconds": 15 },
+            { "name": "踝泵", "detail": "勾脚-绷脚，慢速全程无痛。20 次 × 3 组", "seconds": 120, "restSeconds": 15 },
             { "name": "踝四方向等长", "detail": "背屈压脚背 / 跖屈托脚底 / 内翻压外侧 / 外翻压内侧。每方向 10 秒 × 3，三成力、关节不动；内翻力度减半，不适则跳过", "seconds": 120, "restSeconds": 15 },
-            { "name": "弹力带踝外翻", "detail": "小阻力，慢回放。12 次 × 2 组", "seconds": 60, "restSeconds": 15 },
+            { "name": "弹力带踝外翻", "detail": "小阻力，慢回放。12 次 × 2 组", "seconds": 75, "restSeconds": 15 },
             { "name": "小腿后侧拉伸", "detail": "毛巾或推墙，拉到紧不拉痛。30 秒 × 3", "seconds": 90, "restSeconds": 10 },
-            { "name": "直腿抬高", "detail": "勾脚、膝伸直，慢起慢落。10 次 × 2 组", "seconds": 60, "restSeconds": 20 },
-            { "name": "臀桥", "detail": "臀部发力，腰椎不塌。10 次 × 2 组", "seconds": 60, "restSeconds": 20 },
-            { "name": "麦肯基俯卧撑起", "detail": "俯卧手撑起上身，髋不离地，无痛范围。8 次 × 2", "seconds": 60, "restSeconds": 20 },
-            { "name": "死虫式", "detail": "腰贴地，对侧手脚缓慢伸展。8 次 × 2 组", "seconds": 60, "restSeconds": 20 },
-            { "name": "收下巴", "detail": "水平向后收，不低头。10 秒 × 8", "seconds": 60, "restSeconds": 10 }
+            { "name": "直腿抬高", "detail": "勾脚、膝伸直，慢起慢落。10 次 × 2 组", "seconds": 75, "restSeconds": 20 },
+            { "name": "臀桥", "detail": "臀部发力，腰椎不塌。10 次 × 2 组", "seconds": 75, "restSeconds": 20 },
+            { "name": "麦肯基俯卧撑起", "detail": "俯卧手撑起上身，髋不离地，无痛范围。8 次 × 2", "seconds": 75, "restSeconds": 20 },
+            { "name": "死虫式", "detail": "腰贴地，对侧手脚缓慢伸展。8 次 × 2 组", "seconds": 90, "restSeconds": 20 },
+            { "name": "收下巴", "detail": "水平向后收，不低头。10 秒 × 8", "seconds": 90, "restSeconds": 10 }
           ]
         },
         {
@@ -31,13 +31,13 @@
           "everyOtherDay": true,
           "exercises": [
             { "name": "单腿站立", "detail": "扶墙，20-30 秒 × 3，踝不晃", "seconds": 90, "restSeconds": 15 },
-            { "name": "弹力带踝外翻+背屈", "detail": "各 12 次 × 2 组，控制轨迹", "seconds": 120, "restSeconds": 20 },
-            { "name": "提踵", "detail": "双脚→单脚，12 次 × 3 组，慢起慢落", "seconds": 60, "restSeconds": 20 },
+            { "name": "弹力带踝外翻+背屈", "detail": "各 12 次 × 2 组，控制轨迹", "seconds": 150, "restSeconds": 20 },
+            { "name": "提踵", "detail": "双脚→单脚，12 次 × 3 组，慢起慢落", "seconds": 120, "restSeconds": 20 },
             { "name": "蚌式开合", "detail": "骨盆不后倒，无痛小范围。12 次 × 2", "seconds": 60, "restSeconds": 20 },
             { "name": "靠墙静蹲", "detail": "膝屈 ≤60°，膝盖对脚尖。20-30 秒 × 3", "seconds": 90, "restSeconds": 30 },
             { "name": "侧卧髋外展", "detail": "脚尖朝前不外旋。12 次 × 2 组", "seconds": 60, "restSeconds": 20 },
-            { "name": "鸟狗式", "detail": "对侧手脚，腰背保持平。8 次 × 2 组", "seconds": 60, "restSeconds": 20 },
-            { "name": "俯卧 YTWL", "detail": "肩胛发力不耸肩。8 次 × 2 组", "seconds": 60, "restSeconds": 20 },
+            { "name": "鸟狗式", "detail": "对侧手脚，腰背保持平。8 次 × 2 组", "seconds": 90, "restSeconds": 20 },
+            { "name": "俯卧 YTWL", "detail": "肩胛发力不耸肩。8 次 × 2 组", "seconds": 105, "restSeconds": 20 },
             { "name": "门框胸肌拉伸", "detail": "肘与肩同高。30 秒 × 2", "seconds": 60, "restSeconds": 10 }
           ]
         },
@@ -48,8 +48,8 @@
           "everyOtherDay": true,
           "exercises": [
             { "name": "浅台阶上下", "detail": "10-15cm，全脚踩实，膝对脚尖。10 次 × 2", "seconds": 90, "restSeconds": 30 },
-            { "name": "扶墙单腿硬拉", "detail": "屈髋不弯腰，髋不过度内旋。8 次 × 2", "seconds": 60, "restSeconds": 30 },
-            { "name": "坐姿伸膝", "detail": "弹力带或轻负荷，12 次 × 2 组", "seconds": 60, "restSeconds": 30 },
+            { "name": "扶墙单腿硬拉", "detail": "屈髋不弯腰，髋不过度内旋。8 次 × 2", "seconds": 75, "restSeconds": 30 },
+            { "name": "坐姿伸膝", "detail": "弹力带或轻负荷，12 次 × 2 组", "seconds": 75, "restSeconds": 30 },
             { "name": "平衡垫站立", "detail": "30 秒 × 3，进阶加抬头/抛接球", "seconds": 90, "restSeconds": 30 },
             { "name": "有氧快走", "detail": "RPE 12-13，能说话微喘。20 分钟", "seconds": 1200, "restSeconds": 0 }
           ]
@@ -72,7 +72,7 @@
             { "name": "椅背胸椎伸展", "detail": "椅背上沿顶肩胛下缘，呼气上背后仰停 2 秒。8 次，不塌腰", "seconds": 60, "restSeconds": 10 },
             { "name": "墙角胸肌拉伸", "detail": "前臂贴墙肘略高于肩，同侧脚前移轻转，每侧 30 秒", "seconds": 60, "restSeconds": 10 },
             { "name": "弓步髋屈肌拉伸", "detail": "先收臀送髋再屈前膝，每侧 30 秒，不塌腰翘臀", "seconds": 60, "restSeconds": 10 },
-            { "name": "提踵加踝泵", "detail": "慢起 2 秒停 1 秒慢落 3 秒 12 次，再踝泵 20 次", "seconds": 60, "restSeconds": 10 },
+            { "name": "提踵加踝泵", "detail": "慢起 2 秒停 1 秒慢落 3 秒 12 次，再踝泵 20 次", "seconds": 105, "restSeconds": 10 },
             { "name": "坐姿夹臀", "detail": "坐椅前 1/2，夹臀 5 秒松 2 秒，8 次，腰不动", "seconds": 60, "restSeconds": 10 },
             { "name": "靠墙天使", "detail": "后脑上背臀贴墙，W 沿墙上滑到 Y，8 次，不拱腰", "seconds": 60, "restSeconds": 15 }
           ]
@@ -102,7 +102,7 @@
           "exercises": [
             { "name": "靠墙天使", "detail": "W 上滑到 Y 顶端停 2 秒，10 次，肋骨不外翻", "seconds": 60, "restSeconds": 10 },
             { "name": "墙俯卧撑", "detail": "脚后退半步，屈肘胸靠墙推回，15 次", "seconds": 60, "restSeconds": 10 },
-            { "name": "靠墙静蹲加提踵", "detail": "静蹲 45 秒后起身提踵 10 次，膝不过脚尖", "seconds": 90, "restSeconds": 20 },
+            { "name": "靠墙静蹲加提踵", "detail": "静蹲 45 秒后起身提踵 10 次，膝不过脚尖", "seconds": 105, "restSeconds": 20 },
             { "name": "站姿髋铰链", "detail": "臀向后推背保持直，腘绳肌发紧停 1 秒，12 次", "seconds": 60, "restSeconds": 10 },
             { "name": "扶桌单腿站立", "detail": "单腿 30 秒，进阶闭眼 10 秒或转头，骨盆水平", "seconds": 60, "restSeconds": 10 },
             { "name": "站姿对侧抬", "detail": "扶桌，对侧手脚伸出停 2 秒，每侧 8 次", "seconds": 60, "restSeconds": 10 },
@@ -126,10 +126,10 @@
           "everyOtherDay": false,
           "exercises": [
             { "name": "坐姿踝泵", "detail": "坐稳勾脚停 1 秒、绷脚停 1 秒，30 次。消肿第一优先，久坐每小时都做", "seconds": 60, "restSeconds": 10 },
-            { "name": "空中画字母", "detail": "一脚悬空写 A-Z 或画 8 字，幅度到无痛极限，脚踝全范围活动", "seconds": 45, "restSeconds": 10 },
+            { "name": "空中画字母", "detail": "一脚悬空写 A-Z 或画 8 字，幅度到无痛极限，脚踝全范围活动", "seconds": 60, "restSeconds": 10 },
             { "name": "踝四方向等长", "detail": "手或桌腿给阻力，背屈跖屈内翻外翻各 10 秒 × 2，三成力、关节不动", "seconds": 90, "restSeconds": 15 },
             { "name": "踝外翻自我抗阻", "detail": "手掌根抵脚外侧，脚向外翻对抗 10 秒 × 4，腓骨肌别偷懒", "seconds": 45, "restSeconds": 10 },
-            { "name": "坐姿提踵", "detail": "坐椅前 1/2，双脚慢起 2 秒停 1 秒慢落，15 次，感受小腿泵血", "seconds": 60, "restSeconds": 10 },
+            { "name": "坐姿提踵", "detail": "坐椅前 1/2，双脚慢起 2 秒停 1 秒慢落，15 次，感受小腿泵血", "seconds": 75, "restSeconds": 10 },
             { "name": "扶桌单腿站", "detail": "手指轻搭桌沿，单腿 20-30 秒换侧，踝不晃；恢复期改双脚站", "seconds": 60, "restSeconds": 15 }
           ]
         },
@@ -139,11 +139,11 @@
           "days": 21,
           "everyOtherDay": false,
           "exercises": [
-            { "name": "坐姿伸膝", "detail": "坐稳缓慢伸直小腿停 2 秒再落，10 次/侧，膝盖对准脚尖，不弹震", "seconds": 60, "restSeconds": 10 },
+            { "name": "坐姿伸膝", "detail": "坐稳缓慢伸直小腿停 2 秒再落，10 次/侧，膝盖对准脚尖，不弹震", "seconds": 90, "restSeconds": 10 },
             { "name": "坐姿髌骨松动", "detail": "拇指轻推膝盖骨上下左右各 10 次，无痛范围，改善髌骨活动度", "seconds": 45, "restSeconds": 10 },
             { "name": "扶桌坐站转换", "detail": "不借手从椅上站起再缓慢坐下，10 次，膝对脚尖不内扣", "seconds": 60, "restSeconds": 15 },
             { "name": "靠墙静蹲", "detail": "背贴墙下滑膝屈不超过 60°，膝不过脚尖，30 秒；前侧痛就蹲浅", "seconds": 60, "restSeconds": 20 },
-            { "name": "坐姿股四头肌收紧", "detail": "腿伸直收紧大腿前侧，膝盖下压停 5 秒放松，10 次/侧", "seconds": 60, "restSeconds": 10 },
+            { "name": "坐姿股四头肌收紧", "detail": "腿伸直收紧大腿前侧，膝盖下压停 5 秒放松，10 次/侧", "seconds": 120, "restSeconds": 10 },
             { "name": "坐位腿后侧拉伸", "detail": "腿伸直脚尖回勾，从髋部往前倾，每侧 30 秒，背不弓", "seconds": 60, "restSeconds": 10 }
           ]
         },
@@ -154,7 +154,7 @@
           "everyOtherDay": false,
           "exercises": [
             { "name": "坐姿髋外展", "detail": "坐椅上双膝用力分开，手向内抵挡对抗 5 秒，10 次，臀侧发力", "seconds": 60, "restSeconds": 10 },
-            { "name": "坐姿夹臀", "detail": "坐椅前 1/2，夹臀 5 秒松 2 秒，10 次，腰不动", "seconds": 60, "restSeconds": 10 },
+            { "name": "坐姿夹臀", "detail": "坐椅前 1/2，夹臀 5 秒松 2 秒，10 次，腰不动", "seconds": 75, "restSeconds": 10 },
             { "name": "坐姿二郎腿拉伸", "detail": "一脚踝搭对侧膝，双手抱大腿轻拉向胸，每侧 30 秒，不驼背", "seconds": 60, "restSeconds": 10 },
             { "name": "弓步髋屈肌拉伸", "detail": "前后脚弓步，先收臀送髋再微屈前膝，每侧 30 秒，不塌腰", "seconds": 60, "restSeconds": 10 },
             { "name": "站姿髋铰链", "detail": "扶桌臀向后推、背挺直，腘绳肌发紧停 1 秒，12 次，不弯腰", "seconds": 60, "restSeconds": 10 },
