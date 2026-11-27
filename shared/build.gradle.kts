@@ -73,6 +73,12 @@ kotlin {
                 implementation("io.ktor:ktor-client-okhttp:2.3.12")
             }
         }
+        // 桌面音频调度策略的回归测试（秒针让路、钟声串行）
+        val jvmTest by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlin:kotlin-test:1.9.23")
+            }
+        }
         // iOS 专属测试（如 TrainingAudio 的模拟器真跑验证）。
         // 注意：commonTest 用例带 JUnit 注解，native 侧编不过，故这里不依赖 commonTest
         val iosX64Test by getting

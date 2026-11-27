@@ -70,13 +70,14 @@ private object DesktopAudioPlayer {
     }
     @Volatile
     private var generation = 0
+    /** 仅播报通道的排程；秒针单独一份，避免被下一秒的清场互相 cancel */
     private val pending = mutableListOf<ScheduledFuture<*>>()
+    private val pendingTicks = mutableListOf<ScheduledFuture<*>>()
     private val activeClips = mutableListOf<Clip>()
     private val activeSpeech = mutableListOf<Pair<Process, Int>>()
-
-    /** 按上层语音开关展开事件：voiceAllowed=true 时语音片段与音效一起排程 */
-    private fun stepsFor(event: TrainingAudioEvent, voiceAllowed: Boolean): List<TrainingAudioStep> =
-        trainingAudioSteps(event, voiceAllowed)
+    /** 语音播报的静音窗口截止时刻（epoch ms），窗口内秒针让路 */
+    @Volatile
+    private var voiceMuteUntilMs = 0L
 
     fun registerSpeech(process: Process, myGen: Int) {
         synchronized(this) {
@@ -89,8 +90,8 @@ private object DesktopAudioPlayer {
         synchronized(this) { activeSpeech.removeAll { it.first === process } }
     }
 
-    private fun playClip(step: TrainingAudioStep, myGen: Int) {
-        if (myGen != generation) return
+    private fun playClip(step: TrainingAudioStep, myGen: Int, checkGeneration: Boolean = true) {
+        if (checkGeneration && myGen != generation) return
         runCatching {
             val inStream = javaClass.classLoader.getResourceAsStream("audio/${step.clip}.wav")
                 ?: return
@@ -124,10 +125,40 @@ private object DesktopAudioPlayer {
         }
     }
 
+    /**
+     * 分通道调度：
+     * - 秒针/暂停反馈走独立通道，不递增 generation、不清场，因此不会掐断正在播的语音；
+     *   语音播报窗口内秒针让路，避免二者叠响。
+     * - 播报类事件仍互斥（新播报掐掉旧播报），并把语音延后到长钟声之后。
+     */
     fun play(event: TrainingAudioEvent, voiceAllowed: Boolean) {
+        if (DesktopAudioPolicy.isTickEvent(event) || DesktopAudioPolicy.isPauseEvent(event)) {
+            val isTick = DesktopAudioPolicy.isTickEvent(event)
+            if (isTick && DesktopAudioPolicy.tickSuppressed(
+                    System.currentTimeMillis(), voiceMuteUntilMs
+                )
+            ) return
+            // 秒针不走 pending，避免被下一次播报事件的清场互相 cancel
+            DesktopAudioPolicy.stepsFor(event, voiceAllowed).forEach { step ->
+                val future: ScheduledFuture<*> = scheduler.schedule(
+                    { playClip(step, generation, checkGeneration = false) },
+                    step.delayMs,
+                    TimeUnit.MILLISECONDS
+                )
+                synchronized(this) { pendingTicks.add(future) }
+            }
+            return
+        }
+
         val myGen = ++generation
         stopInternal(clearGeneration = false)
-        stepsFor(event, voiceAllowed).forEach { step ->
+        val steps = DesktopAudioPolicy.stepsFor(event, voiceAllowed)
+        val voiceSteps = steps.filter { it.isVoice }
+        if (voiceSteps.isNotEmpty()) {
+            val longest = voiceSteps.maxOf { DesktopAudioPolicy.voiceMuteMs(it) }
+            voiceMuteUntilMs = System.currentTimeMillis() + longest
+        }
+        steps.forEach { step ->
             val future: ScheduledFuture<*> = scheduler.schedule({
                 if (step.isVoice) {
                     DesktopVoice.speak(step.clip, myGen) { generation == myGen }
@@ -156,10 +187,13 @@ private object DesktopAudioPlayer {
         synchronized(this) {
             pending.forEach { it.cancel(false) }
             pending.clear()
+            pendingTicks.forEach { it.cancel(false) }
+            pendingTicks.clear()
             activeClips.toList().forEach { runCatching { it.stop() } }
             activeClips.clear()
             activeSpeech.toList().forEach { runCatching { it.first.destroy() } }
             activeSpeech.clear()
+            voiceMuteUntilMs = 0L
         }
     }
 }

@@ -1,12 +1,12 @@
 # AI SportTask 🏋️
 
 [![Android 自动打包](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml/badge.svg)](https://github.com/raoxiaoman/AI-SportTask/actions/workflows/android-build.yml)
-[![Release v1.1.0](https://img.shields.io/badge/Release-v1.1.0-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.1.0)
+[![Release v1.1.1](https://img.shields.io/badge/Release-v1.1.1-blue)](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.1.1)
 
 个人运动任务管理与打卡应用，基于 Kotlin Multiplatform + Compose Multiplatform，支持 Android 与 iOS，可选自托管云同步。
 
-> **最新版本 [v1.1.0](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.1.0)**（2026-11-26）
-> · [下载 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.1.0/AI-SportTask-v1.1.0-release.apk)
+> **最新版本 [v1.1.1](https://github.com/raoxiaoman/AI-SportTask/releases/tag/v1.1.1)**（2026-11-26）
+> · [下载 APK](https://github.com/raoxiaoman/AI-SportTask/releases/download/v1.1.1/AI-SportTask-v1.1.1-release.apk)
 > · [全部 Release](https://github.com/raoxiaoman/AI-SportTask/releases)
 >
 > 云同步服务端可自托管（`backend/`，已提供 systemd + Caddy 部署手册）；未配置服务器时，登录页可选「先不登录 · 离线使用」，本地功能不受影响。
@@ -27,7 +27,7 @@
 到 [Releases](https://github.com/raoxiaoman/AI-SportTask/releases) 下载最新的 `AI-SportTask-vX.Y.Z-release.apk`：
 
 ```bash
-adb install -r AI-SportTask-v1.1.0-release.apk
+adb install -r AI-SportTask-v1.1.1-release.apk
 ```
 
 > 若之前装的是自行编译的 Debug 包，需先卸载再装（签名不同）；正式版本之间可直接覆盖升级。
@@ -43,7 +43,8 @@ adb install -r AI-SportTask-v1.1.0-release.apk
 
 桌面版说明：
 
-- **音效保留、语音降级**：倒计时秒针与提示音正常播放，中文语音播报在桌面端静音（不依赖系统 TTS，跨平台稳定）；设置页的「语音播报」开关在桌面端无实际效果。
+- **音效与语音**：倒计时秒针与提示音正常播放；macOS 通过系统 `say`（Tingting 中文语音）实时合成中文播报，Windows / Linux 无系统 TTS 时自动降级为只播音效。设置页的「语音播报」开关在 macOS 上同样生效。
+- **音频调度**：秒针走独立通道，不与语音共用清场；含长钟声的阶段事件把语音延后到钟声播完，播报期间秒针自动让路，避免「时间过半」等中间提醒与钟声叠响、或被下一秒秒针拦腰截断。
 - **本地数据**：登录会话、服务器地址、主题等存在 `~/.sporttask/`，训练数据在同目录的 SQLite 文件中；ESC 键等效于手机端返回键。
 - **各平台安装包需在对应系统构建**：macOS 出 `.dmg`、Windows 出 `.msi`、Linux 出 `.deb`，CI 可按平台分别产出。
 
@@ -76,8 +77,8 @@ cd AI-SportTask
 - 推送 `v*` 标签：自动产出**签名 Release APK** 并创建 GitHub Release
 
 ```bash
-git tag -a v1.1.0 -m "AI SportTask v1.1.0"
-git push origin v1.1.0
+git tag -a v1.1.1 -m "AI SportTask v1.1.1"
+git push origin v1.1.1
 ```
 
 版本号由标签决定，安装包文件名、Release 标题与 App 内「关于」保持一致。Release 签名密钥保存在仓库 Secrets 中，不进入代码库。
@@ -91,6 +92,7 @@ git push origin v1.1.0
 
 ## 版本记录
 
+- **v1.1.1** — 修复桌面端语音播报与倒计时钟声/秒针叠响、播报被拦腰截断：秒针改用独立调度通道不再掐断中文语音，阶段事件语音延后到 1s 长钟声播完，播报期间秒针自动让路；新增桌面音频调度策略与 9 项回归测试；修正桌面版语音说明
 - **v1.1.0** — 训练完成页重新设计（徽章/统计卡片/按钮对齐）；训练中查看图解改为页内嵌面板，顶部常驻倒计时与播放控制；修复成就提示每次训练都重复弹出；校正三套方案 20 处动作分配时间；离线兜底图解同步「坐姿髋外展」「踝外翻自我抗阻」力学修正
 - **v1.0.9** — 图解详情的暂停/继续按钮缩小为轻量胶囊；修正「坐姿髋外展」步骤文案（服务端图解已同步生效）
 - **v1.0.8** — 修复训练完成页「保存打卡」按钮图标颜色；动作图解详情页可直接暂停/继续计时；休息页卡片与入口改为下一动作；桌面端恢复中文语音播报（macOS 系统 TTS）
