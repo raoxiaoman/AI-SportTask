@@ -1,111 +1,63 @@
 package pages
 
-import java.io.BufferedInputStream
+import java.io.ByteArrayInputStream
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
-import javax.sound.sampled.AudioInputStream
+import java.util.concurrent.atomic.AtomicLong
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.Clip
 import javax.sound.sampled.FloatControl
+import javax.sound.sampled.LineEvent
 
 /**
  * 桌面端训练音频播放器。
  *
- * 复用 commonMain 的 [trainingAudioSteps] 事件→片段映射：
- * - 音效（tick / chime）用打包进 resources/audio 的 wav，通过 JVM 原生 Clip 播放；
- * - 中文语音（v*）用 macOS 内置 `say` 实时合成播报，无需分发语音资源。
+ * 与 Android / iOS 完全一致：全部片段都是打包进 App 的离线音频
+ * （秒针、钟声为 CC0 音效，中文播报为构建期用 Tingting 预生成的语音 wav），
+ * 运行时只做「预加载 + 播放」，**不调用系统 TTS**。
+ * 早期版本用 macOS `say` 实时合成，进程启动/销毁会带来播报卡顿与截断；
+ * v1.1.2 起改为直接播放与手机端同一批离线语音。
  *
- * 语音是否播放遵循上层 voiceAllowed（设置页的语音开关）；
- * 非 macOS 平台没有可用的系统 TTS，自动降级为只播音效。
+ * 调度规则同样对齐 Android 的 SoundPool：
+ * - 每个事件只把自己的片段按 delay 排程叠加播放，事件之间不互斥、不清场，
+ *   所以秒针不会掐断正在播的语音，长钟声也不会被后续事件停掉；
+ * - 只有暂停 / 退出（stop）才统一作废旧排程并停止正在播放的片段。
  */
-private object DesktopVoice {
-    /** 与 tools/generate_training_audio.sh 的语音文案保持一致 */
-    private val texts = mapOf(
-        "v5" to "五",
-        "v4" to "四",
-        "v3" to "三",
-        "v2" to "二",
-        "v1" to "一",
-        "v_start" to "开始训练",
-        "v_resume" to "继续训练",
-        "v_rest" to "休息一下",
-        "v_rest_end" to "休息结束",
-        "v_next" to "下一个动作",
-        "v_half" to "时间过半",
-        "v_complete" to "训练完成",
-        "v_skip" to "跳过"
-    )
-
-    private val isMac = System.getProperty("os.name", "")
-        .contains("Mac", ignoreCase = true)
-
-    /** 返回 false 表示该片段没有可播报的语音或平台不支持 TTS */
-    fun speak(clip: String, myGen: Int, isCurrent: () -> Boolean): Boolean {
-        val text = texts[clip] ?: return false
-        if (!isMac) return false
-        Thread {
-            runCatching {
-                if (!isCurrent()) return@runCatching
-                // GUI 启动的 app PATH 可能很精简，用绝对路径确保找到系统 TTS
-                val process = ProcessBuilder("/usr/bin/say", "-v", "Tingting", "-r", "235", text)
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start()
-                DesktopAudioPlayer.registerSpeech(process, myGen)
-                try {
-                    process.waitFor()
-                } finally {
-                    DesktopAudioPlayer.unregisterSpeech(process)
-                }
-            }
-        }.apply { isDaemon = true }.start()
-        return true
-    }
-}
-
 private object DesktopAudioPlayer {
     private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "sporttask-audio").apply { isDaemon = true }
     }
-    @Volatile
-    private var generation = 0
-    /** 仅播报通道的排程；秒针单独一份，避免被下一秒的清场互相 cancel */
-    private val pending = mutableListOf<ScheduledFuture<*>>()
-    private val pendingTicks = mutableListOf<ScheduledFuture<*>>()
+
+    /** 预加载的 PCM 字节，消除首次播放时的资源查找与解码开销 */
+    private val clipBytes = ConcurrentHashMap<String, ByteArray>()
+
+    /** 每次 stop 递增；已排程但未执行的任务据此自行作废，不需要维护 future 列表 */
+    private val epoch = AtomicLong(0)
+
     private val activeClips = mutableListOf<Clip>()
-    private val activeSpeech = mutableListOf<Pair<Process, Int>>()
-    /** 语音播报的静音窗口截止时刻（epoch ms），窗口内秒针让路 */
-    @Volatile
-    private var voiceMuteUntilMs = 0L
 
-    fun registerSpeech(process: Process, myGen: Int) {
-        synchronized(this) {
-            if (myGen == generation) activeSpeech.add(process to myGen)
-            else runCatching { process.destroy() }
-        }
+    private fun loadBytes(name: String): ByteArray? = clipBytes[name] ?: runCatching {
+        javaClass.classLoader.getResourceAsStream("audio/$name.wav")?.use { it.readBytes() }
+    }.getOrNull()?.also { clipBytes[name] = it }
+
+    fun prepare() {
+        // 进入执行页时把所有片段读进内存；失败也不影响播放侧的懒加载兜底
+        trainingAudioClips.forEach { loadBytes(it) }
     }
 
-    fun unregisterSpeech(process: Process) {
-        synchronized(this) { activeSpeech.removeAll { it.first === process } }
-    }
-
-    private fun playClip(step: TrainingAudioStep, myGen: Int, checkGeneration: Boolean = true) {
-        if (checkGeneration && myGen != generation) return
+    private fun playClip(step: TrainingAudioStep) {
+        val bytes = loadBytes(step.clip) ?: return
         runCatching {
-            val inStream = javaClass.classLoader.getResourceAsStream("audio/${step.clip}.wav")
-                ?: return
-            val bin = BufferedInputStream(inStream)
-            val raw: AudioInputStream = AudioSystem.getAudioInputStream(bin)
             val clip = AudioSystem.getClip()
-            clip.open(raw)
+            AudioSystem.getAudioInputStream(ByteArrayInputStream(bytes)).use { raw ->
+                clip.open(raw)
+            }
             // 音量：volume 0..1 线性映射到该混音器支持的分贝范围
             runCatching {
                 val gain = clip.getControl(FloatControl.Type.MASTER_GAIN) as FloatControl
-                val min = gain.javaClass.getMethod("getMinimumValue").invoke(gain) as Float
-                val max = gain.javaClass.getMethod("getMaximumValue").invoke(gain) as Float
                 val target = -40f + 40f * step.volume.coerceIn(0f, 1f)
-                gain.value = target.coerceIn(min, max)
+                gain.value = target.coerceIn(gain.minimum, gain.maximum)
             }
             // 变速（部分混音器不支持，失败则忽略）
             if (step.rate != 1f) {
@@ -115,87 +67,34 @@ private object DesktopAudioPlayer {
                 }
             }
             synchronized(this) { activeClips.add(clip) }
-            clip.start()
             clip.addLineListener { evt ->
-                if (evt.type == javax.sound.sampled.LineEvent.Type.STOP) {
+                if (evt.type == LineEvent.Type.STOP) {
                     synchronized(this) { activeClips.remove(clip) }
                     runCatching { clip.close() }
                 }
             }
+            clip.start()
         }
     }
 
-    /**
-     * 分通道调度：
-     * - 秒针/暂停反馈走独立通道，不递增 generation、不清场，因此不会掐断正在播的语音；
-     *   语音播报窗口内秒针让路，避免二者叠响。
-     * - 播报类事件仍互斥（新播报掐掉旧播报），并把语音延后到长钟声之后。
-     */
     fun play(event: TrainingAudioEvent, voiceAllowed: Boolean) {
-        if (DesktopAudioPolicy.isTickEvent(event) || DesktopAudioPolicy.isPauseEvent(event)) {
-            val isTick = DesktopAudioPolicy.isTickEvent(event)
-            if (isTick && DesktopAudioPolicy.tickSuppressed(
-                    System.currentTimeMillis(), voiceMuteUntilMs
-                )
-            ) return
-            // 秒针不走 pending，避免被下一次播报事件的清场互相 cancel
-            DesktopAudioPolicy.stepsFor(event, voiceAllowed).forEach { step ->
-                val future: ScheduledFuture<*> = scheduler.schedule(
-                    { playClip(step, generation, checkGeneration = false) },
-                    step.delayMs,
-                    TimeUnit.MILLISECONDS
-                )
-                synchronized(this) { pendingTicks.add(future) }
-            }
-            return
-        }
-
-        val myGen = ++generation
-        stopInternal(clearGeneration = false)
-        val steps = DesktopAudioPolicy.stepsFor(event, voiceAllowed)
-        val voiceSteps = steps.filter { it.isVoice }
-        if (voiceSteps.isNotEmpty()) {
-            val longest = voiceSteps.maxOf { DesktopAudioPolicy.voiceMuteMs(it) }
-            voiceMuteUntilMs = System.currentTimeMillis() + longest
-        }
-        steps.forEach { step ->
-            val future: ScheduledFuture<*> = scheduler.schedule({
-                if (step.isVoice) {
-                    DesktopVoice.speak(step.clip, myGen) { generation == myGen }
-                } else {
-                    playClip(step, myGen)
-                }
+        val myEpoch = epoch.get()
+        trainingAudioSteps(event, voiceAllowed).forEach { step ->
+            scheduler.schedule({
+                if (epoch.get() == myEpoch) playClip(step)
             }, step.delayMs, TimeUnit.MILLISECONDS)
-            synchronized(this) { pending.add(future) }
         }
-    }
-
-    fun prepare() {
-        // JVM Clip 无需预热，首次播放加载开销可忽略；保留空实现对齐接口
     }
 
     fun stop() {
-        generation++
-        stopInternal(clearGeneration = true)
-    }
-
-    fun release() {
-        stop()
-    }
-
-    private fun stopInternal(clearGeneration: Boolean) {
+        epoch.incrementAndGet()
         synchronized(this) {
-            pending.forEach { it.cancel(false) }
-            pending.clear()
-            pendingTicks.forEach { it.cancel(false) }
-            pendingTicks.clear()
             activeClips.toList().forEach { runCatching { it.stop() } }
             activeClips.clear()
-            activeSpeech.toList().forEach { runCatching { it.first.destroy() } }
-            activeSpeech.clear()
-            voiceMuteUntilMs = 0L
         }
     }
+
+    fun release() = stop()
 }
 
 actual fun prepareTrainingAudio() {

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# 生成训练音频资源，一次产出两端副本：
-#   Android → androidApp/src/androidMain/res/raw
-#   iOS     → iosApp/iosApp/Audio（Xcode 以文件夹引用方式整体拷进 App bundle）
+# 生成训练音频资源，一次产出三端副本：
+#   Android → androidApp/src/androidMain/res/raw（mp3）
+#   iOS     → iosApp/iosApp/Audio（mp3，Xcode 以文件夹引用方式整体拷进 App bundle）
+#   Desktop → desktopApp/src/main/resources/audio（wav，JVM Clip 只原生支持 PCM）
 #
 # 音效来源：sfxmint.com，CC0 1.0（可商用、无需署名）
 #   - 木质节拍器滴答 https://sfxmint.com/dl/metronome-ticking-01.mp3
@@ -64,7 +65,20 @@ voice v_skip     235 "跳过"
 echo "同步到 iOS App bundle…"
 cp "$OUT"/*.mp3 "$IOS_OUT"/
 
+# 桌面端与手机端用同一批离线语音，只是容器换成 JVM Clip 能直接读的 PCM wav。
+# App 运行时三端都只播放打包进来的音频，不调用系统 TTS。
+echo "同步到桌面 App resources（mp3 → wav）…"
+DESKTOP_OUT="$ROOT/desktopApp/src/main/resources/audio"
+mkdir -p "$DESKTOP_OUT"
+for src in "$OUT"/*.mp3; do
+  name="$(basename "$src" .mp3)"
+  ffmpeg -y -loglevel error -i "$src" \
+    -ac 1 -ar 22050 -c:a pcm_s16le "$DESKTOP_OUT/$name.wav"
+done
+
 echo "产物："
 ls -lh "$OUT"
 echo "→ $IOS_OUT"
 ls -lh "$IOS_OUT" | tail -n +2 | wc -l | xargs echo "iOS 片段数："
+echo "→ $DESKTOP_OUT"
+ls -lh "$DESKTOP_OUT"/*.wav | tail -n +2 | wc -l | xargs echo "桌面片段数："
